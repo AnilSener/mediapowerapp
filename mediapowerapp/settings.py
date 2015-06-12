@@ -135,6 +135,7 @@ INSTALLED_APPS = (
     'rest_framework_mongoengine',
     'rest_framework',
     'django_tables2',
+    'emoticons',
 )
 #import mongoengine.django.mongo_auth.models
 #App to add django-fbauth-templatetag,twitter-text-py,
