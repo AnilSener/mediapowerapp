@@ -78,9 +78,8 @@ def exec_Twitter_Streamer():
     stream = MyStreamer(consumer_key, consumer_secret,access_token,access_token_secret)
 
 
-    stream.statuses.filter(locations=[-74.2591,40.4774,-73.7002,40.9176])
-    stream.statuses.filter(replies=all)
-    stream.statuses.filter(language="en")
+    #stream.statuses.filter(locations=[-74.2591,40.4774,-73.7002,40.9176])
+    stream.statuses.filter(follow=["Ford","Forduk","FordAutoShows","FordEu"],replies=all,language="en")
     #stream.statuses.filter(follow=["Ford","VW","Volkswagen","Forduk","FordAutoShows","FordEu","Toyota"])
     #Enable Count in IBM server
     #stream.statuses.filter(count=50000)

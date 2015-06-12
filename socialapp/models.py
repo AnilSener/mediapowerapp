@@ -108,6 +108,10 @@ class Emoticon(models.NodeModel):
     language = StringField()
     def gettweetObjIDs(self):
         return self.tweetObjIDs"""
+class Subscriber(models.NodeModel):
+    name=models.StringProperty()
+
+
 
 class TwitterUser(models.NodeModel):
     userID = models.StringProperty()
@@ -117,8 +121,18 @@ class TwitterUser(models.NodeModel):
     followersCount = models.IntegerProperty()
     isGeoEnabled = models.BooleanProperty()
     language = models.StringProperty()
+    account = models.Relationship('Subscriber',rel_type='owns',related_name="twitterusers")
 
     #tweets = models.Relationship('TweetNode',rel_type='tweets')
+s=Subscriber.objects.all()
+if len(s[:])==0:
+    s=Subscriber.objects.create(name="Ford")
+    for id in ["Ford","Forduk","FordAutoShows","FordEu"]:
+        tu=TwitterUser.objects.create(userID=id)
+        s.twitterusers.add(tu)
+    s.save()
+
+
 
 from mongoengine.django.auth import User
 qs=User.objects.all()
@@ -127,6 +141,13 @@ if len(qs[:])==0:
 """class SubscriberTwitterUser(User):
     objects = UserManager()
     follows = models.Relationship('self', rel_type='follows',related_name='followed_by')"""
+
+import django_tables2 as tables
+class HashTagResultsTable(tables.Table):
+    class Meta:
+        model = HashTag
+        # add class="paleblue" to <table> tag
+        attrs = {"class": "paleblue"}
 
 class BoundingBox(object):
     def __init__(self, *args, **kwargs):
