@@ -6,6 +6,7 @@ config = configparser.ConfigParser()
 config.read('../app.conf')
 from django.contrib.auth import authenticate
 import datetime
+from background_task import background
 ####################################################################
 consumer_key="Vs7V2k4vPWMMyTFqLzqPkM6wE"
 consumer_secret="aWNRzh74LUT1fuW35y6VzRDtvuimQ4LjFGMnMMkEXI0Y9LSpkf"
@@ -13,6 +14,7 @@ consumer_secret="aWNRzh74LUT1fuW35y6VzRDtvuimQ4LjFGMnMMkEXI0Y9LSpkf"
 access_token="258113369-63Y2Cqr9q0Bo02WU4AS8Bjiv3JnHP2Us7HimK26G"
 access_token_secret="Z4Sf9EyLbOJ4jPI5WlZPZUyv3OwluuZXiKXn0pamk8Dly"
 ###################################################################
+@background(schedule=datetime.datetime.now())
 def exec_Twitter_Streamer():
     class MyStreamer(TwythonStreamer):
         def on_success(self, data):
@@ -79,7 +81,7 @@ def exec_Twitter_Streamer():
 
 
     #stream.statuses.filter(locations=[-74.2591,40.4774,-73.7002,40.9176])
-    stream.statuses.filter(follow=["Ford","Forduk","FordAutoShows","FordEu"],replies=all,language="en")
+    stream.statuses.filter(follow=["Ford","Forduk","FordAutoShows","FordEu"],replies=all,language="en",count=50000)
     #stream.statuses.filter(follow=["Ford","VW","Volkswagen","Forduk","FordAutoShows","FordEu","Toyota"])
     #Enable Count in IBM server
     #stream.statuses.filter(count=50000)

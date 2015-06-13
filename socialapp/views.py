@@ -8,6 +8,8 @@ from django.template import RequestContext
 from django.shortcuts import render_to_response
 from datetime import datetime
 from django.contrib.auth import authenticate
+from runipy.notebook_runner import NotebookRunner
+from IPython.nbformat.current import read
 from django_tables2 import RequestConfig
 def main_view(request):
     response_dict={"response_msg":""};target='index.html'
@@ -22,6 +24,9 @@ def main_view(request):
             response_dict['form']=form
             if request.session["s"]!=None:
                 if request.method == 'GET' and len(request.GET)>0:
+                    notebook = read(open("analytics/twitter_sna.ipynb"), 'json')
+                    r = NotebookRunner(notebook, pylab=True)
+                    r.run_notebook()
                     response_dict["response_msg"]+="Welcome to Mediapower Social Scoring Application!"
                     return render_to_response(target,response_dict,context_instance=RequestContext(request))
                 else:
