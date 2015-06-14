@@ -6,7 +6,7 @@ config = configparser.ConfigParser()
 config.read('../app.conf')
 from django.contrib.auth import authenticate
 import datetime
-from background_task import background
+#from background_task import background
 ####################################################################
 consumer_key="Vs7V2k4vPWMMyTFqLzqPkM6wE"
 consumer_secret="aWNRzh74LUT1fuW35y6VzRDtvuimQ4LjFGMnMMkEXI0Y9LSpkf"
@@ -14,7 +14,10 @@ consumer_secret="aWNRzh74LUT1fuW35y6VzRDtvuimQ4LjFGMnMMkEXI0Y9LSpkf"
 access_token="258113369-63Y2Cqr9q0Bo02WU4AS8Bjiv3JnHP2Us7HimK26G"
 access_token_secret="Z4Sf9EyLbOJ4jPI5WlZPZUyv3OwluuZXiKXn0pamk8Dly"
 ###################################################################
-@background(schedule=datetime.datetime.now())
+#@background(schedule=datetime.datetime.now())
+from mediapowerapp import celery_app
+from time import sleep
+@celery_app.task()
 def exec_Twitter_Streamer():
     class MyStreamer(TwythonStreamer):
         def on_success(self, data):

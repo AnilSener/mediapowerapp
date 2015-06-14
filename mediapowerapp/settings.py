@@ -123,7 +123,7 @@ INSTALLED_APPS = (
     'django_tables2',
     'emoticons',
     'debug_toolbar',
-    'background_task',
+    "djcelery",
 )
 #import mongoengine.django.mongo_auth.models
 #App to add django-fbauth-templatetag,twitter-text-py,
@@ -182,7 +182,14 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS =('static-assets',)
 NEO4DJANGO_PROFILE_REQUESTS = False
 NEO4DJANGO_DEBUG_GREMLIN = False
-
+import djcelery
+djcelery.setup_loader()
+BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_ENABLE_UTC = True
 
 ######
 
