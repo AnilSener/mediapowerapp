@@ -1,7 +1,7 @@
 # Create your views here.
 
 
-from socialapp.models import Subscriber,HashTagResultsTable
+from socialapp.models import Subscriber
 
 
 from django.template import RequestContext

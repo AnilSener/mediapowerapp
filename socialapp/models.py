@@ -2,6 +2,7 @@
 from mongoengine import *
 import math
 from neo4django.db import models
+from django.db import models as dbmodels
 #from neo4django.graph_auth.models import User, UserManager
 # Create your models here.
 import nltk
@@ -86,6 +87,7 @@ class TweetNode(models.NodeModel):
     owner = models.Relationship('TwitterUser',rel_type='tweeted_by',related_name="tweets")
     objectID=models.StringProperty()
     replies = models.Relationship('self',rel_type='replied_as')
+    retweets = models.Relationship('self',rel_type='retweeted_as')
 
 
 class HashTag(models.NodeModel):
@@ -97,6 +99,11 @@ class Emoticon(models.NodeModel):
     type = models.StringProperty()
     tweets = models.Relationship('TweetNode',rel_type='expresses',related_name="emoticons")
     users = models.Relationship('TwitterUser',rel_type='feels',related_name="emoticons")
+
+class TwitterRegistry(dbmodels.Model):
+    id=dbmodels.AutoField(primary_key=True)
+    subscriberName=dbmodels.TextField()
+    twitterUserName=dbmodels.TextField()
 
 """class TwitterUser(Document):
     userID = StringField()
@@ -118,17 +125,22 @@ class TwitterUser(models.NodeModel):
     userName = models.StringProperty()
     retweetCount = models.IntegerProperty()
     friendsCount = models.IntegerProperty()
+    favouriteCount = models.IntegerProperty()
     followersCount = models.IntegerProperty()
     isGeoEnabled = models.BooleanProperty()
     language = models.StringProperty()
     account = models.Relationship('Subscriber',rel_type='owns',related_name="twitterusers")
+    follower = models.Relationship('self', rel_type='follows',related_name='followed_by')
 
     #tweets = models.Relationship('TweetNode',rel_type='tweets')
 s=Subscriber.objects.all()
 if len(s[:])==0:
     s=Subscriber.objects.create(name="Ford")
-    for id in ["Ford","Forduk","FordAutoShows","FordEu"]:
-        tu=TwitterUser.objects.create(userID=id)
+    registry=TwitterRegistry.objects.filter(subscriberName="Ford").all()
+    twitterAccounts=registry.values_list('twitterUserName',flat=True)
+    for name in twitterAccounts:
+        print name
+        tu=TwitterUser.objects.create(userName=name)
         s.twitterusers.add(tu)
     s.save()
 
@@ -142,12 +154,12 @@ if len(qs[:])==0:
     objects = UserManager()
     follows = models.Relationship('self', rel_type='follows',related_name='followed_by')"""
 
-import django_tables2 as tables
+"""import django_tables2 as tables
 class HashTagResultsTable(tables.Table):
     class Meta:
         model = HashTag
         # add class="paleblue" to <table> tag
-        attrs = {"class": "paleblue"}
+        attrs = {"class": "paleblue"}"""
 
 class BoundingBox(object):
     def __init__(self, *args, **kwargs):
