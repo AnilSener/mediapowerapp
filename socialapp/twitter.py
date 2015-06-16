@@ -6,6 +6,7 @@ config = configparser.ConfigParser()
 config.read('../app.conf')
 from django.contrib.auth import authenticate
 import datetime
+from time import sleep
 #from background_task import background
 ####################################################################
 consumer_key="Vs7V2k4vPWMMyTFqLzqPkM6wE"
@@ -85,15 +86,17 @@ def exec_Twitter_Streamer():
         def on_error(self, status_code, data):
             print status_code
     stream = SubscriberUserStreamer(consumer_key, consumer_secret,access_token,access_token_secret)
-    registry=TwitterRegistry.objects.all()
-    twitterAccounts=registry.values_list('twitterUserName',flat=True)
+    #registry=TwitterRegistry.objects.all()
+    #twitterAccounts=registry.values_list('twitterUserName',flat=True)
+    subscribers=Subscriber.objects.all()
+    twitterAccounts=list(itertools.chain(*(subs.twitterusers.all() for subs in subscribers)))
     comma_sep_list=""
     for i,user in enumerate(twitterAccounts):
-        comma_sep_list+=user+", " if i<len(twitterAccounts)-1 else user
+        comma_sep_list+=user.userID+", " if i<len(twitterAccounts)-1 else user.userID
     print(comma_sep_list)
     #stream.statuses.filter(follow=["Ford","Forduk","FordAutoShows","FordEu"])
     #stream.statuses.filter(locations=[-74.2591,40.4774,-73.7002,40.9176])
-    stream.statuses.filter(follow=comma_sep_list,locations=[-74.2591,40.4774,-73.7002,40.9176],replies=all,language="en")
+    stream.statuses.filter(follow=comma_sep_list,replies=all,language="en")
     #stream.statuses.filter(replies=all,language="en")
     #stream.statuses.filter(locations=[-74.2591,40.4774,-73.7002,40.9176])
     #stream.statuses.filter(follow=["Ford","Forduk","FordAutoShows","FordEu"],replies=all,language="en")
@@ -152,6 +155,7 @@ def exec_Twitter_HashTag_Streamer():
 
                     tn=TweetNode.objects.create(objectID=str(t._object_key),tweetID=data["id"],in_reply_to_status_id=data["in_reply_to_status_id"])
                     t.cleaned_text = cleanTweet(t,tn,u)
+                    extractHashtags(data,tn,u)
                     if data["in_reply_to_status_id"]!=None:
                         t.calculate_Sentiment_Scores()
                         print t.pos_Score
@@ -219,11 +223,14 @@ def exec_Subscriber_Followers_API():
     twitter_users=list(itertools.chain(*(subs.twitterusers.all() for subs in subscribers)))
     twitter = Twython(consumer_key, consumer_secret,access_token,access_token_secret)
 
-    for user in twitter_users:
-        print user.userID,"!!!"
+    for i,user in enumerate(twitter_users):
+        print user.userName,"!!!"
+        if (i+1)%15==0:
+            print "Waiting 15 minutes for the next call"
+            sleep(910)
         try:
             print "!!!TIME FOR FOLLOWERS!!!"
-            followers=twitter.get_followers_ids(user_id=long(user.userID),stringify_ids=True,count=200)
+            followers=twitter.get_followers_list(screen_name=user.userName,include_user_entities=True,count=200)
             for f in followers:
                 print f
         except TwythonError as e:
@@ -239,23 +246,7 @@ def cleanTweet(t,tn,u):
     urls=[str(ur['url']) for ur in t.urls]
     text=text.encode('ascii','ignore')
     for word in text.split():
-        if word.startswith("@") or word in urls:
-            text=text.replace(word,"")
-        elif word.startswith("#"):
-            qs=HashTag.objects.filter(tag=word)
-            hash_tag=None
-            if len(qs[:])>0:
-                hash_tag=qs[:1].get()
-            else:
-                hash_tag=HashTag.objects.create(tag=word)
-            tn.hashtags.add(hash_tag)
-            tn.save()
-            previous_user_tags=[obj.tag for obj in list(u.hashtags.all())]
-            print "previous hashtags",previous_user_tags
-            if not word in previous_user_tags:
-                u.tweets.add(tn)
-                u.hashtags.add(hash_tag)
-                u.save()
+        if word.startswith("@") or word in urls or word.startswith("#"):
             text=text.replace(word,"")
     print text
     #text=text.lower()
@@ -309,6 +300,7 @@ def createTweet(data):
 def buildAssociation(data,t,u):
     tn=TweetNode.objects.create(objectID=str(t._object_key),tweetID=data["id"],in_reply_to_status_id=data["in_reply_to_status_id"])
     t.cleaned_text = cleanTweet(t,tn,u)
+    extractHashtags(data,tn,u)
     if data["in_reply_to_status_id"]!=None:
         t.calculate_Sentiment_Scores()
         print t.pos_Score
@@ -320,6 +312,24 @@ def buildAssociation(data,t,u):
             parent_tn=qs[:1].get()
             parent_tn.retweets.add(tn) if t.isRetweeted else parent_tn.replies.add(tn)
             parent_tn.save()
+
+def extractHashtags(data,tn,u):
+    for word in [x["text"] for x in data["entities"]["hashtags"]]:
+        qs=HashTag.objects.filter(tag=word)
+        hash_tag=None
+        if len(qs[:])>0:
+            hash_tag=qs[0]
+        else:
+            hash_tag=HashTag.objects.create(tag=word)
+        tn.hashtags.add(hash_tag)
+        tn.save()
+        previous_user_tags=[obj.tag for obj in list(u.hashtags.all())]
+        print "previous hashtags",previous_user_tags
+        if not word in previous_user_tags:
+            u.tweets.add(tn)
+            u.hashtags.add(hash_tag)
+            u.save()
+
 """
 Rest API
 from twython import Twython
