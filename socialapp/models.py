@@ -11,6 +11,7 @@ wnl = nltk.WordNetLemmatizer()
 import numpy as np
 import math
 class Tweet(Document):
+    tweetID= LongField()
     geometry = PolygonField()
     geopoint = GeoPointField()
     timestamp = DateTimeField()

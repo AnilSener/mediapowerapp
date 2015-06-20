@@ -4,7 +4,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 TEMPLATE_DIRS = (
     os.path.join(BASE_DIR, "templates"),
 )
-STATIC_URL =os.path.join(BASE_DIR, "static")
+STATIC_URL =os.path.join(BASE_DIR, "static/")
+STATICFILES_DIRS =('static-assets',)
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 
@@ -57,6 +58,9 @@ STATICFILES_DIRS = (
     # Always use forward slashes, even on Windows.
     # Don't forget to use absolute paths, not relative paths.
 )"""
+
+
+#STATIC_URL = '/static/'
 
 # List of finder classes that know how to find static files in
 # various locations.
@@ -178,13 +182,13 @@ NEO4J_DATABASES = {
 }
 DATABASE_ROUTERS = ['neo4django.utils.Neo4djangoIntegrationRouter']
 
-STATIC_URL = '/static/'
-STATICFILES_DIRS =('static-assets',)
+
 NEO4DJANGO_PROFILE_REQUESTS = False
 NEO4DJANGO_DEBUG_GREMLIN = False
 import djcelery
 djcelery.setup_loader()
-BROKER_URL = 'redis://localhost:6379/0'
+#BROKER_URL = 'redis://localhost:6379/0'
+BROKER_URL = 'amqp://guest:guest@localhost:5672//'
 CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'

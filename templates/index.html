@@ -1,10 +1,90 @@
 <!DOCTYPE html>
+{% load render_table from django_tables2 %}
 <html>
 <head lang="en">
     <meta charset="UTF-8">
-    <title></title>
+    <title>MEDIAPOWER</title>
+    {% load staticfiles %}
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+    <script src="//code.jquery.com/jquery-1.10.2.js"></script>
+    <script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+    <script src="{{ STATIC_URL }}js/jsnetworkx.js"></script>
+    <script src="{{ STATIC_URL }}js/jquery.form.js"></script>
+<link rel="stylesheet" href="{{ STATIC_URL }}css/bootstrap.min.css">
+
+<!-- Optional theme -->
+<link rel="stylesheet" href="{{ STATIC_URL }}css/bootstrap-theme.min.css">
+
+<!-- Latest compiled and minified JavaScript -->
+<script src="{{ STATIC_URL }}js/bootstrap.min.js"></script>
+     <script>
+$(function() {
+$( "#tabs" ).tabs();
+});
+</script>
+    <style>
+
+        #tabs {
+
+    height: 100%;
+    width: 100%;
+    color: #A0A7B2;
+    position: relative;
+    z-index: 999;
+    padding: 6px 8px;
+    -moz-box-shadow: 0px 3px 4px #000;
+    -webkit-box-shadow: 0px 3px 4px #000;
+    fill-opacity: 0.8;
+    opacity: 0.8;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: lightblue;
+
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+#tabs div {
+    height: 100%;
+    width: 100%;
+    color: #000000;
+    align-content: center;
+    fill-opacity: 0.8;
+    opacity: 0.8;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: lightgray;
+
+}
+        #effect h3 { margin: 0; padding: 0.4em; text-align: center; }
+    </style>
 </head>
 <body>
-test
+<div id="tabs">
+  <ul>
+    <li><a href="#growth">Growth</a></li>
+      <li><a href="#hashtag">Hashtags</a></li>
+      <li><a href="#bechmark">Benchmark</a></li>
+      <li><a href="#sentiment">Sentiment</a></li>
+      <li><a href="#conversion">Conversion</a></li>
+      <li><a href="#origin">Origin</a></li>
+  </ul>
+    <div id="growth" >
+
+    </div>
+
+    <div id="hashtag" >
+
+    </div>
+    <div id="benchmark" >
+
+    </div>
+    <div id="sentiment" >
+
+    </div>
+    <div id="conversion" >
+
+    </div>
+    <div id="origin" >
+
+    </div>
+</div>
 </body>
 </html>
