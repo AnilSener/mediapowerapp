@@ -1,9 +1,15 @@
 from django.conf.urls import patterns, include, url
 from socialapp import views
+from tastypie.api import Api
+from socialapp.api import *
+v1_api = Api(api_name='v1')
+v1_api.register(SubscriberResource())
 # Uncomment the next two lines to enable the admin:
-from django.contrib import admin
-admin.autodiscover()
+"""from django.contrib import admin
+admin.autodiscover()"""
+from neo4django import admin
 
+admin.autodiscover()
 urlpatterns = patterns('',
     # Examples:
     # url(r'^$', 'mediapowerapp.views.home', name='home'),
@@ -15,4 +21,5 @@ urlpatterns = patterns('',
     # Uncomment the next line to enable the admin:
     url(r'^admin/', include(admin.site.urls)),
     url(r'^socialapp/$',views.main_view,name='main_view'),
+    url(r'^api/', include(v1_api.urls)),
 )

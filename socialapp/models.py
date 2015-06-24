@@ -87,6 +87,7 @@ class TweetNode(models.NodeModel):
     in_reply_to_status_id=models.IntegerProperty()
     owner = models.Relationship('TwitterUser',rel_type='tweeted_by',related_name="tweets")
     objectID=models.StringProperty()
+    createdAt = models.DateTimeProperty()
     replies = models.Relationship('self',rel_type='replied_as')
     retweets = models.Relationship('self',rel_type='retweeted_as')
 
@@ -105,6 +106,18 @@ class TwitterRegistry(dbmodels.Model):
     id=dbmodels.AutoField(primary_key=True)
     subscriberName=dbmodels.TextField()
     twitterUserName=dbmodels.TextField()
+
+#Chart Models
+class HashtagBenchmark(dbmodels.Model):
+    id=dbmodels.AutoField(primary_key=True)
+    creationdate=dbmodels.DateTimeField(auto_now=True,auto_now_add=True)
+    subscriber=dbmodels.TextField()
+    hashtag = dbmodels.TextField()
+    count = dbmodels.IntegerField()
+    class Meta:
+        ordering=('subscriber','-creationdate')
+    """def __unicode__(self):
+        return '%s %s %s %s' %(self.hashtag, self.count,self.subscriber,self.creationdate)"""
 
 """class TwitterUser(Document):
     userID = StringField()
@@ -136,21 +149,24 @@ class TwitterUser(models.NodeModel):
     #tweets = models.Relationship('TweetNode',rel_type='tweets')
 s=Subscriber.objects.all()
 if len(s[:])==0:
-    s=Subscriber.objects.create(name="Ford")
-    registry=TwitterRegistry.objects.filter(subscriberName="Ford").all()
-    twitterAccounts=registry.values_list('twitterUserName',flat=True)
-    for name in twitterAccounts:
-        print name
-        tu=TwitterUser.objects.create(userName=name)
-        s.twitterusers.add(tu)
-    s.save()
+    Subscriber.objects.create(name="Ford")
+    Subscriber.objects.create(name="Chevrolet")
+    for s in Subscriber.objects.all():
+        registry=TwitterRegistry.objects.filter(subscriberName=s.name).all()
+        twitterAccounts=registry.values_list('twitterUserName',flat=True)
+        for name in twitterAccounts:
+            print name
+            tu=TwitterUser.objects.create(userName=name)
+            s.twitterusers.add(tu)
+        s.save()
 
 
 
 from mongoengine.django.auth import User
 qs=User.objects.all()
 if len(qs[:])==0:
-    user = User.create_user(username='default', email='default@default.com', password='defaultpassword')
+    user = User.create_user(username='Ford', email='default@default.com', password='defaultpassword')
+    user.set_password('defaultpassword')
 """class SubscriberTwitterUser(User):
     objects = UserManager()
     follows = models.Relationship('self', rel_type='follows',related_name='followed_by')"""

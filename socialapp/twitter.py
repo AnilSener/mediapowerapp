@@ -6,6 +6,7 @@ config = configparser.ConfigParser()
 config.read('../app.conf')
 from django.contrib.auth import authenticate
 import datetime
+from pytz import timezone
 from time import sleep
 #from background_task import background
 ####################################################################
@@ -58,7 +59,7 @@ def exec_Twitter_Streamer():
                         t.tweetID=data["id"]
                         t.language = data["lang"]
                         t.text = data['text']
-                        t.createdAt = data["created_at"]
+                        #t.createdAt = data["created_at"]
                         #print data["entities"]["hashtags"]
                         t.timestamp = datetime.datetime.fromtimestamp(long(data["timestamp_ms"])/1e3)
                         t.isRetweeted = data["retweeted"]
@@ -71,8 +72,9 @@ def exec_Twitter_Streamer():
                         t.urls = data["entities"]["urls"]
                         t.cleaned_text = cleanTweet(t)
                         t.save()
+                        createdAt=datetime.datetime.strptime(str(data["created_at"]).replace(str(data["created_at"])[data["created_at"].index("+"):len(data["created_at"])-4],''),'%a %b %d %H:%M:%S %Y').replace(tzinfo=timezone('UTC'))
 
-                        tn=TweetNode.objects.create(objectID=str(t._object_key),tweetID=data["id"],in_reply_to_status_id=data["in_reply_to_status_id"])
+                        tn=TweetNode.objects.create(objectID=str(t._object_key),tweetID=data["id"],in_reply_to_status_id=data["in_reply_to_status_id"],createdAt=createdAt)
                         if data["in_reply_to_status_id"]!=None:
                             t.calculate_Sentiment_Scores()
                             print t.pos_Score
@@ -148,7 +150,7 @@ def exec_Twitter_HashTag_Streamer():
                         t.tweetID=data["id"]
                         t.language = data["lang"]
                         t.text = data['text']
-                        t.createdAt = data["created_at"]
+                        #t.createdAt = data["created_at"]
                         #print data["entities"]["hashtags"]
                         t.timestamp = datetime.datetime.fromtimestamp(long(data["timestamp_ms"])/1e3)
                         t.isRetweeted = data["retweeted"]
@@ -161,8 +163,9 @@ def exec_Twitter_HashTag_Streamer():
                         t.urls = data["entities"]["urls"]
                         t.cleaned_text = cleanTweet(t)
                         t.save()
+                        createdAt=datetime.datetime.strptime(str(data["created_at"]).replace(str(data["created_at"])[data["created_at"].index("+"):len(data["created_at"])-4],''),'%a %b %d %H:%M:%S %Y').replace(tzinfo=timezone('UTC'))
 
-                        tn=TweetNode.objects.create(objectID=str(t._object_key),tweetID=data["id"],in_reply_to_status_id=data["in_reply_to_status_id"])
+                        tn=TweetNode.objects.create(objectID=str(t._object_key),tweetID=data["id"],in_reply_to_status_id=data["in_reply_to_status_id"],createdAt=createdAt)
                         extractHashtags(data,tn,u)
                         if data["in_reply_to_status_id"]!=None:
                             t.calculate_Sentiment_Scores()
@@ -297,7 +300,7 @@ def createTweet(data):
         t.placeType = data["place"]["place_type"]
     t.language = data["lang"]
     t.text = data['text']
-    t.createdAt = data["created_at"]
+    #t.createdAt = data["created_at"]
     #t.timestamp = datetime.datetime.fromtimestamp(long(data["timestamp_ms"])/1e3)
     t.isRetweeted = data["retweeted"]
     t.isFavorited= data["favorited"]
@@ -310,7 +313,8 @@ def createTweet(data):
     t.save()
     return t
 def buildAssociation(data,t,u):
-    tn=TweetNode.objects.create(objectID=str(t._object_key),tweetID=data["id"],in_reply_to_status_id=data["in_reply_to_status_id"])
+    createdAt=datetime.datetime.strptime(str(data["created_at"]).replace(str(data["created_at"])[data["created_at"].index("+"):len(data["created_at"])-4],''),'%a %b %d %H:%M:%S %Y').replace(tzinfo=timezone('UTC'))
+    tn=TweetNode.objects.create(objectID=str(t._object_key),tweetID=data["id"],in_reply_to_status_id=data["in_reply_to_status_id"],createdAt=createdAt)
 
     extractHashtags(data,tn,u)
     if data["in_reply_to_status_id"]!=None:

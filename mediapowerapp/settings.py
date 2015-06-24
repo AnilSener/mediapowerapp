@@ -6,7 +6,7 @@ TEMPLATE_DIRS = (
 )
 STATIC_URL =os.path.join(BASE_DIR, "static/")
 STATICFILES_DIRS =('static-assets',)
-DEBUG = True
+DEBUG = True #Set to True when only developing the system, not good for celery
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
@@ -28,7 +28,7 @@ MANAGERS = ADMINS
 
 # Hosts/domain names that are valid for this site; required if DEBUG is False
 # See https://docs.djangoproject.com/en/1.4/ref/settings/#allowed-hosts
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["localhost"]
 
 
 
@@ -87,6 +87,9 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'debug_toolbar.middleware.DebugToolbarMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
+
     # Uncomment the next line for simple clickjacking protection:
     # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
@@ -128,6 +131,9 @@ INSTALLED_APPS = (
     'emoticons',
     'debug_toolbar',
     "djcelery",
+    'tastypie',
+    'chartit',
+
 )
 #import mongoengine.django.mongo_auth.models
 #App to add django-fbauth-templatetag,twitter-text-py,
@@ -194,6 +200,26 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_ENABLE_UTC = True
+
+import sys
+# Path for spark source folder
+os.environ['SPARK_HOME']="/opt/cloudera/parcels/CDH-5.3.0-1.cdh5.3.0.p0.30/lib/spark"
+os.environ['JAVA_HOME']="/usr/jdk64/jdk1.7.0_67/jre/"
+#os.environ['PYSPARK_SUBMIT_ARGS']="--master yarn-client --driver-memory 512m --executor-memory 512m --num-executors 2"
+
+
+# Append pyspark  to Python Path
+sys.path.append("/opt/cloudera/parcels/CDH-5.3.0-1.cdh5.3.0.p0.30/lib/spark/python")
+
+try:
+    from pyspark import SparkContext
+    from pyspark import SparkConf
+    print ("Successfully imported Spark Modules")
+
+except ImportError as e:
+    print ("Can not import Spark Modules", e)
+    sys.exit(1)
+
 
 ######
 
