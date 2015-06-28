@@ -6,7 +6,7 @@ TEMPLATE_DIRS = (
 )
 STATIC_URL =os.path.join(BASE_DIR, "static/")
 STATICFILES_DIRS =('static-assets',)
-DEBUG = True #Set to True when only developing the system, not good for celery
+DEBUG = False #Set to True when only developing the system, not good for celery
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (

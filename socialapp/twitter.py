@@ -80,7 +80,7 @@ def exec_Twitter_Streamer():
                             print t.pos_Score
                             print t.obj_Score
                             print t.neg_Score
-                        if tn.in_reply_to_status_id!=None:
+                        if tn.in_reply_to_status_id!=None and t.language=="en":
                             qs=TweetNode.objects.filter(tweetID=tn.in_reply_to_status_id)
                             if len(qs[:])>0:
                                 parent_tn=qs[:1].get()
@@ -167,7 +167,7 @@ def exec_Twitter_HashTag_Streamer():
 
                         tn=TweetNode.objects.create(objectID=str(t._object_key),tweetID=data["id"],in_reply_to_status_id=data["in_reply_to_status_id"],createdAt=createdAt)
                         extractHashtags(data,tn,u)
-                        if data["in_reply_to_status_id"]!=None:
+                        if data["in_reply_to_status_id"]!=None and t.language=="en":
                             t.calculate_Sentiment_Scores()
                             print t.pos_Score
                             print t.obj_Score
@@ -195,12 +195,12 @@ def exec_Twitter_HashTag_Streamer():
 
         stream.statuses.filter(track=comma_sep_list,replies=all,language="en")
 import itertools
+#Twitter Rest API Connection
+twitter = Twython(consumer_key, consumer_secret,access_token,access_token_secret)
 @celery_app.task()
 def exec_Subscriber_Timeline_API():
     subscribers=Subscriber.objects.all()
     twitter_users=list(itertools.chain(*(subs.twitterusers.all() for subs in subscribers)))
-    twitter = Twython(consumer_key, consumer_secret,access_token,access_token_secret)
-
     for user in twitter_users:
         print user.userName,"!!!"
         user_data=None
@@ -226,16 +226,14 @@ def exec_Subscriber_Timeline_API():
                     t=createTweet(tweet_data)
                     buildAssociation(tweet_data,t,u)
             except TwythonError as e:
-                print e
+                print e.message
         except TwythonError as e:
-            print e
+            print e.message
         #api_url = 'https://api.twitter.com/1.1/statuses/user_timeline.json'
         #constructed_url = twitter.construct_api_url(api_url, user_id=user.userName,count=200,exclude_replies=0,include_rts=1)
 def exec_Subscriber_Followers_API():
     subscribers=Subscriber.objects.all()
     twitter_users=list(itertools.chain(*(subs.twitterusers.all() for subs in subscribers)))
-    twitter = Twython(consumer_key, consumer_secret,access_token,access_token_secret)
-
     for i,user in enumerate(twitter_users):
         print user.userName,"!!!"
         if (i+1)%15==0:
@@ -247,7 +245,17 @@ def exec_Subscriber_Followers_API():
             for f in followers:
                 print f
         except TwythonError as e:
-            print e
+            print e.message
+@celery_app.task()
+def exec_Places_API():
+    try:
+        print "!!!TIME FOR PLACES!!!"
+        """followers=twitter.get_followers_list(screen_name=user.userName,include_user_entities=True,count=200)
+        for f in followers:
+            print f"""
+
+    except TwythonError as e:
+        print e.message
 
 import HTMLParser
 html_parser=HTMLParser.HTMLParser()
@@ -317,7 +325,7 @@ def buildAssociation(data,t,u):
     tn=TweetNode.objects.create(objectID=str(t._object_key),tweetID=data["id"],in_reply_to_status_id=data["in_reply_to_status_id"],createdAt=createdAt)
 
     extractHashtags(data,tn,u)
-    if data["in_reply_to_status_id"]!=None:
+    if data["in_reply_to_status_id"]!=None and t.language=="en":
         t.calculate_Sentiment_Scores()
         print t.pos_Score
         print t.obj_Score
@@ -330,21 +338,25 @@ def buildAssociation(data,t,u):
             parent_tn.save()
 
 def extractHashtags(data,tn,u):
-    for word in [x["text"] for x in data["entities"]["hashtags"]]:
-        qs=HashTag.objects.filter(tag=word)
-        hash_tag=None
-        if len(qs[:])>0:
-            hash_tag=qs[0]
-        else:
-            hash_tag=HashTag.objects.create(tag=word)
-        tn.hashtags.add(hash_tag)
-        tn.save()
-        previous_user_tags=[obj.tag for obj in list(u.hashtags.all())]
-        print "previous hashtags",previous_user_tags
-        if not word in previous_user_tags:
-            u.tweets.add(tn)
-            u.hashtags.add(hash_tag)
-            u.save()
+    try:
+        if data["entities"]["hashtags"]!=None:
+            for word in [x["text"] for x in data["entities"]["hashtags"]]:
+                qs=HashTag.objects.filter(tag=word)
+                hash_tag=None
+                if len(qs[:])>0:
+                    hash_tag=qs[0]
+                else:
+                    hash_tag=HashTag.objects.create(tag=word)
+                tn.hashtags.add(hash_tag)
+                tn.save()
+                previous_user_tags=[obj.tag for obj in list(u.hashtags.all())]
+                print "previous hashtags",previous_user_tags
+                if not word in previous_user_tags:
+                    u.tweets.add(tn)
+                    u.hashtags.add(hash_tag)
+                    u.save()
+    except Exception as e:
+        print e.message
 
 """
 Rest API

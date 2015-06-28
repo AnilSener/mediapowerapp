@@ -11,6 +11,7 @@ from django.contrib.auth import authenticate
 from runipy.notebook_runner import NotebookRunner
 from IPython.nbformat.current import read
 from django_tables2 import RequestConfig
+from pytz import timezone
 from analytics.kpi_calculations import *
 from analytics.charts import *
 from socialapp.forms import testFormBootstrap3
@@ -30,9 +31,9 @@ def main_view(request):
                 form = testFormBootstrap3()
             response_dict['form']=form
             if request.method == 'GET' and request.session!=None:
-                today=datetime.today()
-                startDate=today.replace(year=today.year-1) if not 'start_date' in request.GET else datetime.strptime(request.GET['start_date'],"%Y-%m-%d")
-                endDate=today if not 'end_date' in request.GET else datetime.strptime(request.GET['end_date'],"%Y-%m-%d")
+                today=datetime.today().replace(tzinfo=timezone('UTC'))
+                startDate=today.replace(year=today.year-1) if not 'start_date' in request.GET else datetime.strptime(request.GET['start_date'],"%Y-%m-%d").replace(tzinfo=timezone('UTC'))
+                endDate=today if not 'end_date' in request.GET else datetime.strptime(request.GET['end_date'],"%Y-%m-%d").replace(tzinfo=timezone('UTC'))
                 print startDate
                 print endDate
                 """notebook = read(open("analytics/twitter_sna.ipynb"), 'json')
