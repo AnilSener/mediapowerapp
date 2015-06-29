@@ -133,7 +133,8 @@ INSTALLED_APPS = (
     "djcelery",
     'tastypie',
     'chartit',
-
+    'splearn',
+    'socialapp.apis'
 )
 #import mongoengine.django.mongo_auth.models
 #App to add django-fbauth-templatetag,twitter-text-py,
