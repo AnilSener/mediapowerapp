@@ -51,7 +51,7 @@ def calculateKPIs(request,startDate,endDate):
     sortedHashtagCounts=sorted(hashtagCounts,key=lambda x:x[1],reverse=True)
     topHashtagCounts=sortedHashtagCounts[:N] if N<len(sortedHashtagCounts) else sortedHashtagCounts
     [HashtagBenchmark(subscriber=request.session["username"],hashtag=t[0][1],count=t[1]).save() for t in topHashtagCounts]
-    countryCodeHashtagsRDD=flattedTweetHashtagsRDD.map(lambda (tn,tag):(Row(countryCode=Tweet.objects.filter(_id=tn.objectID).values_list("countryCode"),year=tn.createdAt.year,month=tn.createdAt.month,tag=tag)))
+    countryCodeHashtagsRDD=flattedTweetHashtagsRDD.map(lambda (tn,tag):(Row(countryCode=Tweet.objects.filter(pk=tn.tweetID).values_list("countryCode"),year=tn.createdAt.year,month=tn.createdAt.month,tag=tag)))
     if (endDate.year-startDate.year)>1:
         groupedRDD=countryCodeHashtagsRDD.groupBy(lambda record:(record.year,record.month,record.tag))
     else:

@@ -11,7 +11,7 @@ wnl = nltk.WordNetLemmatizer()
 import numpy as np
 import math
 class Tweet(Document):
-    tweetID= LongField()
+    tweetID= StringField(primary_key=True)
     geometry = PolygonField()
     geopoint = GeoPointField()
     timestamp = DateTimeField()
@@ -83,10 +83,9 @@ def conv_pos(x):
 
 
 class TweetNode(models.NodeModel):
-    tweetID= models.IntegerProperty()
+    tweetID= models.StringProperty()
     in_reply_to_status_id=models.IntegerProperty()
     owner = models.Relationship('TwitterUser',rel_type='tweeted_by',related_name="tweets")
-    objectID=models.StringProperty()
     createdAt = models.DateTimeProperty()
     replies = models.Relationship('self',rel_type='replied_as')
     retweets = models.Relationship('self',rel_type='retweeted_as')

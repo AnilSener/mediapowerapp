@@ -56,7 +56,7 @@ def exec_Twitter_Streamer():
                         t.placeName = data["place"]["name"]
                         t.countryCode = data["place"]["country_code"]
                         t.placeType = data["place"]["place_type"]
-                        t.tweetID=data["id"]
+                        t.tweetID=data["id_str"]
                         t.language = data["lang"]
                         t.text = data['text']
                         #t.createdAt = data["created_at"]
@@ -74,7 +74,7 @@ def exec_Twitter_Streamer():
                         t.save()
                         createdAt=datetime.datetime.strptime(str(data["created_at"]).replace(str(data["created_at"])[data["created_at"].index("+"):len(data["created_at"])-4],''),'%a %b %d %H:%M:%S %Y').replace(tzinfo=timezone('UTC'))
 
-                        tn=TweetNode.objects.create(objectID=str(t._object_key),tweetID=data["id"],in_reply_to_status_id=data["in_reply_to_status_id"],createdAt=createdAt)
+                        tn=TweetNode.objects.create(tweetID=data["id_str"],in_reply_to_status_id=data["in_reply_to_status_id"],createdAt=createdAt)
                         if data["in_reply_to_status_id"]!=None:
                             t.calculate_Sentiment_Scores()
                             print t.pos_Score
@@ -147,7 +147,7 @@ def exec_Twitter_HashTag_Streamer():
                         t.placeName = data["place"]["name"]
                         t.countryCode = data["place"]["country_code"]
                         t.placeType = data["place"]["place_type"]
-                        t.tweetID=data["id"]
+                        t.tweetID=data["id_str"]
                         t.language = data["lang"]
                         t.text = data['text']
                         #t.createdAt = data["created_at"]
@@ -165,7 +165,7 @@ def exec_Twitter_HashTag_Streamer():
                         t.save()
                         createdAt=datetime.datetime.strptime(str(data["created_at"]).replace(str(data["created_at"])[data["created_at"].index("+"):len(data["created_at"])-4],''),'%a %b %d %H:%M:%S %Y').replace(tzinfo=timezone('UTC'))
 
-                        tn=TweetNode.objects.create(objectID=str(t._object_key),tweetID=data["id"],in_reply_to_status_id=data["in_reply_to_status_id"],createdAt=createdAt)
+                        tn=TweetNode.objects.create(tweetID=str(data["id_str"]),in_reply_to_status_id=data["in_reply_to_status_id"],createdAt=createdAt)
                         extractHashtags(data,tn,u)
                         if data["in_reply_to_status_id"]!=None and t.language=="en":
                             t.calculate_Sentiment_Scores()
@@ -322,7 +322,7 @@ def createTweet(data):
     return t
 def buildAssociation(data,t,u):
     createdAt=datetime.datetime.strptime(str(data["created_at"]).replace(str(data["created_at"])[data["created_at"].index("+"):len(data["created_at"])-4],''),'%a %b %d %H:%M:%S %Y').replace(tzinfo=timezone('UTC'))
-    tn=TweetNode.objects.create(objectID=str(t._object_key),tweetID=data["id"],in_reply_to_status_id=data["in_reply_to_status_id"],createdAt=createdAt)
+    tn=TweetNode.objects.create(tweetID=str(data["id_str"]),in_reply_to_status_id=data["in_reply_to_status_id"],createdAt=createdAt)
 
     extractHashtags(data,tn,u)
     if data["in_reply_to_status_id"]!=None and t.language=="en":
