@@ -52,7 +52,7 @@ def calculateKPIs(request,startDate,endDate):
     sortedHashtagCounts=sorted(hashtagCounts,key=lambda x:x[1],reverse=True)
     topHashtagCounts=sortedHashtagCounts[:N] if N<len(sortedHashtagCounts) else sortedHashtagCounts
     [HashtagBenchmark(subscriber=request.session["username"],hashtag=t[0][1],count=t[1]).save() for t in topHashtagCounts]
-    countryCodeHashtagsRDD=flattedTweetHashtagsRDD.map(lambda (tn,tag):(Row(countryCode=Tweet.objects.filter(pk=tn.tweetID).values_list("countryCode"),created=tn.createdAt,tag=tag)))
+    countryCodeHashtagsRDD=flattedTweetHashtagsRDD.map(lambda (tn,tag):(Row(countryCode=Tweet.objects.filter(pk=tn.tweetID).values_list("location__countryCode"),created=tn.createdAt,tag=tag)))
     if (endDate.year-startDate.year)>1:
         groupedRDD=countryCodeHashtagsRDD.groupBy(lambda record:(record.created.year,record.created.month,record.tag))
     elif endDate.year==startDate.year and (endDate.month-endDate.month)>1:
@@ -61,7 +61,7 @@ def calculateKPIs(request,startDate,endDate):
         groupedRDD=countryCodeHashtagsRDD.groupBy(lambda record:(week_of_month(record.created),record.tag))
     else:
         groupedRDD=countryCodeHashtagsRDD.groupBy(lambda record:(record.created.day,record.tag))
-        
+
     countryCodeHashtagCounts=groupedRDD.mapValues(len)
     print countryCodeHashtagCounts.collect()
     #print hashtagCountRDD.collect()

@@ -10,16 +10,19 @@ from nltk.corpus import sentiwordnet as swn
 wnl = nltk.WordNetLemmatizer()
 import numpy as np
 import math
-class Tweet(Document):
-    tweetID= StringField(primary_key=True)
+
+class Place(EmbeddedDocument):
     geometry = PolygonField()
     geopoint = GeoPointField()
-    timestamp = DateTimeField()
     placeId = StringField()
     placeFullName = StringField()
     placeName = StringField()
     countryCode = StringField()
     placeType = StringField()
+
+class Tweet(Document):
+    tweetID= StringField(primary_key=True)
+    location= EmbeddedDocumentField('Place')
     language = StringField()
     text = StringField()
     cleaned_text = StringField()
@@ -84,7 +87,7 @@ def conv_pos(x):
 
 class TweetNode(models.NodeModel):
     tweetID= models.StringProperty()
-    in_reply_to_status_id=models.IntegerProperty()
+    in_reply_to_status_id=models.StringProperty()
     owner = models.Relationship('TwitterUser',rel_type='tweeted_by',related_name="tweets")
     createdAt = models.DateTimeProperty()
     replies = models.Relationship('self',rel_type='replied_as')

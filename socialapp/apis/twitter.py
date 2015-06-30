@@ -1,6 +1,6 @@
 __author__ = 'root'
 from twython import TwythonStreamer,Twython,TwythonError
-from socialapp.models import Tweet,TwitterUser,BoundingBox,TweetNode,HashTag,TwitterRegistry,Subscriber
+from socialapp.models import *
 import configparser
 config = configparser.ConfigParser()
 config.read('../app.conf')
@@ -28,7 +28,7 @@ def exec_Twitter_Streamer():
                 print(data['text'].encode('utf-8'))
                 try:
                     authenticate(username='default', password='defaultpassword')
-                    t_qs=Tweet.objects.filter(tweetID=data["id"])
+                    t_qs=Tweet.objects.filter(tweetID=str(data["id_str"]))
                     if len(t_qs[:])==0:
                         qs=TwitterUser.objects.filter(userID=data["user"]["id_str"])
                         u = TwitterUser()
@@ -44,44 +44,34 @@ def exec_Twitter_Streamer():
                         print "User!!!!",u.userName
 
                         t=Tweet()
-                        coord=data["place"]["bounding_box"]['coordinates'][0]
-                        if coord[0][0]==coord[1][0] and coord[0][1]==coord[1][1]:
-                            t.geopoint = coord[0];print "geom trick"
-                        else:
-                            t.geometry=[[coord[0],coord[1],coord[2],coord[3],coord[0]]]
-                        if data["geo"]!=None:
-                            t.geopoint = data["geo"]["coordinates"]
-                        t.placeId = data["place"]["id"]
-                        t.placeFullName = data["place"]["full_name"]
-                        t.placeName = data["place"]["name"]
-                        t.countryCode = data["place"]["country_code"]
-                        t.placeType = data["place"]["place_type"]
-                        t.tweetID=data["id_str"]
+                        t.tweetID=str(data["id_str"])
                         t.language = data["lang"]
                         t.text = data['text']
-                        #t.createdAt = data["created_at"]
-                        #print data["entities"]["hashtags"]
                         t.timestamp = datetime.datetime.fromtimestamp(long(data["timestamp_ms"])/1e3)
                         t.isRetweeted = data["retweeted"]
                         t.isFavorited= data["favorited"]
                         t.favoriteCount = data["favorite_count"]
                         t.retweetCount = data["retweet_count"]
                         t.trends = data["entities"]["trends"]
-                        #t.hashtags = data["entities"]["hashtags"]
                         t.symbols = data["entities"]["symbols"]
                         t.urls = data["entities"]["urls"]
                         t.cleaned_text = cleanTweet(t)
                         t.save()
+                        p=createPlace(data["place"],data["geo"])
+                        if p!=None:
+                            updated = Tweet.objects(pk=t.tweetID).update_one(set__location=p)
+                            if not updated:
+                                print "location not updated"
                         createdAt=datetime.datetime.strptime(str(data["created_at"]).replace(str(data["created_at"])[data["created_at"].index("+"):len(data["created_at"])-4],''),'%a %b %d %H:%M:%S %Y').replace(tzinfo=timezone('UTC'))
 
-                        tn=TweetNode.objects.create(tweetID=data["id_str"],in_reply_to_status_id=data["in_reply_to_status_id"],createdAt=createdAt)
+                        tn=TweetNode.objects.create(tweetID=str(data["id_str"]),in_reply_to_status_id=str(data["in_reply_to_status_id"]),createdAt=createdAt)
                         if data["in_reply_to_status_id"]!=None:
                             t.calculate_Sentiment_Scores()
                             print t.pos_Score
                             print t.obj_Score
                             print t.neg_Score
                         if tn.in_reply_to_status_id!=None and t.language=="en":
-                            qs=TweetNode.objects.filter(tweetID=tn.in_reply_to_status_id)
+                            qs=TweetNode.objects.filter(tweetID=str(tn.in_reply_to_status_id))
                             if len(qs[:])>0:
                                 parent_tn=qs[:1].get()
                                 parent_tn.retweets.add(tn) if t.isRetweeted else parent_tn.replies.add(tn)
@@ -93,16 +83,13 @@ def exec_Twitter_Streamer():
         def on_error(self, status_code, data):
             print status_code
     stream = SubscriberUserStreamer(consumer_key, consumer_secret,access_token,access_token_secret)
-    #registry=TwitterRegistry.objects.all()
-    #twitterAccounts=registry.values_list('twitterUserName',flat=True)
     subscribers=Subscriber.objects.all()
     twitterAccounts=list(itertools.chain(*(subs.twitterusers.all() for subs in subscribers)))
     comma_sep_list=""
     for i,user in enumerate(twitterAccounts):
         comma_sep_list+=user.userID+", " if i<len(twitterAccounts)-1 else user.userID
     print(comma_sep_list)
-    #stream.statuses.filter(follow=["Ford","Forduk","FordAutoShows","FordEu"])
-    #stream.statuses.filter(locations=[-74.2591,40.4774,-73.7002,40.9176])
+
     stream.statuses.filter(follow=comma_sep_list,replies=all,language="en")
     #stream.statuses.filter(replies=all,language="en")
     #stream.statuses.filter(locations=[-74.2591,40.4774,-73.7002,40.9176])
@@ -119,13 +106,13 @@ def exec_Twitter_HashTag_Streamer():
                 print(data['text'].encode('utf-8'))
                 try:
                     authenticate(username='default', password='defaultpassword')
-                    t_qs=Tweet.objects.filter(tweetID=data["id"])
+                    t_qs=Tweet.objects.filter(tweetID=str(data["id_str"]))
                     if len(t_qs[:])==0:
-                        qs=TwitterUser.objects.filter(userID=data["user"]["id_str"])
+                        qs=TwitterUser.objects.filter(userID=str(data["user"]["id_str"]))
                         u = TwitterUser()
                         if len(qs[:])>0:
                             u=qs[:1].get()
-                        u.userID = data["user"]['id_str']#Should be uniqueId!!! Set as a qunique index
+                        u.userID = str(data["user"]['id_str'])#Should be uniqueId!!! Set as a qunique index
                         u.userName = data["user"]["screen_name"]
                         u.followersCount = data["user"]["followers_count"]
                         u.friendsCount = data["user"]["friends_count"]
@@ -135,37 +122,27 @@ def exec_Twitter_HashTag_Streamer():
                         print "User!!!!",u.userName
 
                         t=Tweet()
-                        coord=data["place"]["bounding_box"]['coordinates'][0]
-                        if coord[0][0]==coord[1][0] and coord[0][1]==coord[1][1]:
-                            t.geopoint = coord[0];print "geom trick"
-                        else:
-                            t.geometry=[[coord[0],coord[1],coord[2],coord[3],coord[0]]]
-                        if data["geo"]!=None:
-                            t.geopoint = data["geo"]["coordinates"]
-                        t.placeId = data["place"]["id"]
-                        t.placeFullName = data["place"]["full_name"]
-                        t.placeName = data["place"]["name"]
-                        t.countryCode = data["place"]["country_code"]
-                        t.placeType = data["place"]["place_type"]
-                        t.tweetID=data["id_str"]
+                        t.tweetID=str(data["id_str"])
                         t.language = data["lang"]
                         t.text = data['text']
-                        #t.createdAt = data["created_at"]
-                        #print data["entities"]["hashtags"]
                         t.timestamp = datetime.datetime.fromtimestamp(long(data["timestamp_ms"])/1e3)
                         t.isRetweeted = data["retweeted"]
                         t.isFavorited= data["favorited"]
                         t.favoriteCount = data["favorite_count"]
                         t.retweetCount = data["retweet_count"]
                         t.trends = data["entities"]["trends"]
-                        #t.hashtags = data["entities"]["hashtags"]
                         t.symbols = data["entities"]["symbols"]
                         t.urls = data["entities"]["urls"]
                         t.cleaned_text = cleanTweet(t)
                         t.save()
+                        p=createPlace(data["place"],data["geo"])
+                        if p!=None:
+                            updated = Tweet.objects(pk=t.tweetID).update_one(set__location=p)
+                            if not updated:
+                                print "location not updated"
                         createdAt=datetime.datetime.strptime(str(data["created_at"]).replace(str(data["created_at"])[data["created_at"].index("+"):len(data["created_at"])-4],''),'%a %b %d %H:%M:%S %Y').replace(tzinfo=timezone('UTC'))
 
-                        tn=TweetNode.objects.create(tweetID=str(data["id_str"]),in_reply_to_status_id=data["in_reply_to_status_id"],createdAt=createdAt)
+                        tn=TweetNode.objects.create(tweetID=str(data["id_str"]),in_reply_to_status_id=str(data["in_reply_to_status_id"]),createdAt=createdAt)
                         extractHashtags(data,tn,u)
                         if data["in_reply_to_status_id"]!=None and t.language=="en":
                             t.calculate_Sentiment_Scores()
@@ -173,7 +150,7 @@ def exec_Twitter_HashTag_Streamer():
                             print t.obj_Score
                             print t.neg_Score
                         if tn.in_reply_to_status_id!=None:
-                            qs=TweetNode.objects.filter(tweetID=tn.in_reply_to_status_id)
+                            qs=TweetNode.objects.filter(tweetID=str(tn.in_reply_to_status_id))
                             if len(qs[:])>0:
                                 parent_tn=qs[:1].get()
                                 parent_tn.retweets.add(tn) if t.isRetweeted else parent_tn.replies.add(tn)
@@ -274,12 +251,12 @@ def cleanTweet(t):
     return text
 def createTweetUser(data):
     print data["user"]["id_str"]
-    qs=TwitterUser.objects.filter(userID=data["user"]["id_str"])
+    qs=TwitterUser.objects.filter(userID=str(data["user"]["id_str"]))
     #print qs[0]
     u = TwitterUser()
     if len(qs[:])>0:
         u=qs[0]
-    u.userID = data["user"]['id_str']
+    u.userID = str(data["user"]['id_str'])
     u.userName = data["user"]["name"]
     u.followersCount = data["user"]["followers_count"]
     u.friendsCount = data["user"]["friends_count"]
@@ -291,38 +268,26 @@ def createTweetUser(data):
 def createTweet(data):
     print "start"
     t=Tweet()
-    if data["place"]!=None:
-        print "There is place"
-        coord=data["place"]["bounding_box"]['coordinates'][0]
-        if coord[0][0]==coord[1][0] and coord[0][1]==coord[1][1]:
-            t.geopoint = coord[0];print "geom trick"
-        else:
-            t.geometry=[[coord[0],coord[1],coord[2],coord[3],coord[0]]]
-        if data["geo"]!=None:
-            t.geopoint = data["geo"]["coordinates"]
-        t.tweetID=data["id"]
-        t.placeId = data["place"]["id"]
-        t.placeFullName = data["place"]["full_name"]
-        t.placeName = data["place"]["name"]
-        t.countryCode = data["place"]["country_code"]
-        t.placeType = data["place"]["place_type"]
+    t.tweetID=str(data["id_str"])
     t.language = data["lang"]
     t.text = data['text']
-    #t.createdAt = data["created_at"]
-    #t.timestamp = datetime.datetime.fromtimestamp(long(data["timestamp_ms"])/1e3)
     t.isRetweeted = data["retweeted"]
     t.isFavorited= data["favorited"]
     t.favoriteCount = data["favorite_count"]
     t.retweetCount = data["retweet_count"]
-    #t.trends = data["entities"]["trends"]
     t.symbols = data["entities"]["symbols"]
     t.urls = data["entities"]["urls"]
     t.cleaned_text = cleanTweet(t)
     t.save()
+    p=createPlace(data["place"],data["geo"])
+    if p!=None:
+        updated = Tweet.objects(pk=t.tweetID).update_one(set__location=p)
+        if not updated:
+            print "location not updated"
     return t
 def buildAssociation(data,t,u):
     createdAt=datetime.datetime.strptime(str(data["created_at"]).replace(str(data["created_at"])[data["created_at"].index("+"):len(data["created_at"])-4],''),'%a %b %d %H:%M:%S %Y').replace(tzinfo=timezone('UTC'))
-    tn=TweetNode.objects.create(tweetID=str(data["id_str"]),in_reply_to_status_id=data["in_reply_to_status_id"],createdAt=createdAt)
+    tn=TweetNode.objects.create(tweetID=str(data["id_str"]),in_reply_to_status_id=str(data["in_reply_to_status_id"]),createdAt=createdAt)
 
     extractHashtags(data,tn,u)
     if data["in_reply_to_status_id"]!=None and t.language=="en":
@@ -331,7 +296,7 @@ def buildAssociation(data,t,u):
         print t.obj_Score
         print t.neg_Score
     if tn.in_reply_to_status_id!=None:
-        qs=TweetNode.objects.filter(tweetID=tn.in_reply_to_status_id)
+        qs=TweetNode.objects.filter(tweetID=str(tn.in_reply_to_status_id))
         if len(qs[:])>0:
             parent_tn=qs[:1].get()
             parent_tn.retweets.add(tn) if t.isRetweeted else parent_tn.replies.add(tn)
@@ -358,6 +323,29 @@ def extractHashtags(data,tn,u):
     except Exception as e:
         print e.message
 
+def createPlace(place,geo):
+    p=None
+    if place!=None:
+        try:
+            p=Place()
+            print "There is place"
+            coord=place["bounding_box"]['coordinates'][0]
+            if coord[0][0]==coord[1][0] and coord[0][1]==coord[1][1]:
+                p.geopoint = coord[0];print "geom trick"
+            else:
+                p.geometry=[[coord[0],coord[1],coord[2],coord[3],coord[0]]]
+            if geo!=None:
+                p.geopoint = geo["coordinates"]
+
+            p.placeId = place["id"]
+            p.placeFullName = place["full_name"]
+            p.placeName = place["name"]
+            p.countryCode = place["country_code"]
+            p.placeType = place["place_type"]
+            p.save()
+        except Exception as e:
+            print e.message
+    return p
 """
 Rest API
 from twython import Twython
