@@ -3,6 +3,7 @@ from socialapp.models import *
 import itertools
 import numpy as np
 from socialapp.api import *
+from socialapp.util import week_of_month
 def calculateTopHashtags(tns,user_hashtags,n):
     hashtag_count_list=sorted(list(np.unique(np.array([{"tag":t.tag,"count":tns.filter(hashtags__tag=t.tag).count()} for t in user_hashtags]))),key=lambda x:x['count'],reverse=True)
     print hashtag_count_list
@@ -51,12 +52,17 @@ def calculateKPIs(request,startDate,endDate):
     sortedHashtagCounts=sorted(hashtagCounts,key=lambda x:x[1],reverse=True)
     topHashtagCounts=sortedHashtagCounts[:N] if N<len(sortedHashtagCounts) else sortedHashtagCounts
     [HashtagBenchmark(subscriber=request.session["username"],hashtag=t[0][1],count=t[1]).save() for t in topHashtagCounts]
-    countryCodeHashtagsRDD=flattedTweetHashtagsRDD.map(lambda (tn,tag):(Row(countryCode=Tweet.objects.filter(pk=tn.tweetID).values_list("countryCode"),year=tn.createdAt.year,month=tn.createdAt.month,tag=tag)))
+    countryCodeHashtagsRDD=flattedTweetHashtagsRDD.map(lambda (tn,tag):(Row(countryCode=Tweet.objects.filter(pk=tn.tweetID).values_list("countryCode"),created=tn.createdAt,tag=tag)))
     if (endDate.year-startDate.year)>1:
-        groupedRDD=countryCodeHashtagsRDD.groupBy(lambda record:(record.year,record.month,record.tag))
+        groupedRDD=countryCodeHashtagsRDD.groupBy(lambda record:(record.created.year,record.created.month,record.tag))
+    elif endDate.year==startDate.year and (endDate.month-endDate.month)>1:
+        groupedRDD=countryCodeHashtagsRDD.groupBy(lambda record:(record.created.month,record.tag))
+    elif endDate.year==startDate.year and (endDate.month-endDate.month)>=1:
+        groupedRDD=countryCodeHashtagsRDD.groupBy(lambda record:(week_of_month(record.created),record.tag))
     else:
-        groupedRDD=countryCodeHashtagsRDD.groupBy(lambda record:(record.month,record.tag))
-
+        groupedRDD=countryCodeHashtagsRDD.groupBy(lambda record:(record.created.day,record.tag))
+        
     countryCodeHashtagCounts=groupedRDD.mapValues(len)
     print countryCodeHashtagCounts.collect()
     #print hashtagCountRDD.collect()
+
