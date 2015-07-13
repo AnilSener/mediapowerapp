@@ -22,6 +22,11 @@ from time import sleep
 @celery_app.task()
 def exec_Twitter_Streamer():
     class SubscriberUserStreamer(TwythonStreamer):
+        global stopwords
+        def __init__(self):
+            stopwordstextfile= open(os.path.join(settings.BASE_DIR,'socialapp/apis/files/stopwords.txt'), 'r')
+            stopwords = [w.replace('\n','') for w in stopwordstextfile.readlines()]
+            stopwordstextfile.close()
         def on_success(self, data):
             if 'text' in data:
                 print(data)
@@ -34,8 +39,8 @@ def exec_Twitter_Streamer():
                         u = TwitterUser()
                         if len(qs[:])>0:
                             u=qs[:1].get()
-                        u.userID = data["user"]['id_str']#Should be uniqueId!!! Set as a qunique index
-                        u.userName = data["user"]["screen_name"]
+                        u.userID = str(data["user"]['id_str'])#Should be uniqueId!!! Set as a qunique index
+                        u.userName = str(data["user"]["screen_name"])
                         u.followersCount = data["user"]["followers_count"]
                         u.friendsCount = data["user"]["friends_count"]
                         u.retweetCount = data["retweet_count"]
@@ -55,13 +60,13 @@ def exec_Twitter_Streamer():
                         t.trends = data["entities"]["trends"]
                         t.symbols = data["entities"]["symbols"]
                         t.urls = data["entities"]["urls"]
-                        t.cleaned_text = cleanTweet(t)
+                        t.cleaned_text = cleanTweet(t,stopwords)
                         t.save()
-                        p=createPlace(data["place"],data["geo"])
-                        if p!=None:
+                        p=createPlace(data["place"],data["geo"],t.tweetID)
+                        """if p!=None:
                             updated = Tweet.objects(pk=t.tweetID).update_one(set__location=p)
                             if not updated:
-                                print "location not updated"
+                                print "location not updated" """
                         createdAt=datetime.datetime.strptime(str(data["created_at"]).replace(str(data["created_at"])[data["created_at"].index("+"):len(data["created_at"])-4],''),'%a %b %d %H:%M:%S %Y').replace(tzinfo=timezone('UTC'))
 
                         tn=TweetNode.objects.create(tweetID=str(data["id_str"]),in_reply_to_status_id=str(data["in_reply_to_status_id"]),createdAt=createdAt)
@@ -100,6 +105,11 @@ def exec_Twitter_Streamer():
 @celery_app.task()
 def exec_Twitter_HashTag_Streamer():
     class HashTagStreamer(TwythonStreamer):
+        global stopwords
+        def __init__(self):
+            stopwordstextfile= open(os.path.join(settings.BASE_DIR,'socialapp/apis/files/stopwords.txt'), 'r')
+            stopwords = [w.replace('\n','') for w in stopwordstextfile.readlines()]
+            stopwordstextfile.close()
         def on_success(self, data):
             if 'text' in data:
                 print(data)
@@ -113,7 +123,7 @@ def exec_Twitter_HashTag_Streamer():
                         if len(qs[:])>0:
                             u=qs[:1].get()
                         u.userID = str(data["user"]['id_str'])#Should be uniqueId!!! Set as a qunique index
-                        u.userName = data["user"]["screen_name"]
+                        u.userName = str(data["user"]["screen_name"])
                         u.followersCount = data["user"]["followers_count"]
                         u.friendsCount = data["user"]["friends_count"]
                         u.retweetCount = data["retweet_count"]
@@ -133,13 +143,13 @@ def exec_Twitter_HashTag_Streamer():
                         t.trends = data["entities"]["trends"]
                         t.symbols = data["entities"]["symbols"]
                         t.urls = data["entities"]["urls"]
-                        t.cleaned_text = cleanTweet(t)
+                        t.cleaned_text = cleanTweet(t,stopwords)
                         t.save()
-                        p=createPlace(data["place"],data["geo"])
-                        if p!=None:
+                        p=createPlace(data["place"],data["geo"],t.tweetID)
+                        """if p!=None:
                             updated = Tweet.objects(pk=t.tweetID).update_one(set__location=p)
                             if not updated:
-                                print "location not updated"
+                                print "location not updated"""""
                         createdAt=datetime.datetime.strptime(str(data["created_at"]).replace(str(data["created_at"])[data["created_at"].index("+"):len(data["created_at"])-4],''),'%a %b %d %H:%M:%S %Y').replace(tzinfo=timezone('UTC'))
 
                         tn=TweetNode.objects.create(tweetID=str(data["id_str"]),in_reply_to_status_id=str(data["in_reply_to_status_id"]),createdAt=createdAt)
@@ -174,18 +184,24 @@ def exec_Twitter_HashTag_Streamer():
 import itertools
 #Twitter Rest API Connection
 twitter = Twython(consumer_key, consumer_secret,access_token,access_token_secret)
+
 @celery_app.task()
 def exec_Subscriber_Timeline_API():
     subscribers=Subscriber.objects.all()
-    twitter_users=list(itertools.chain(*(subs.twitterusers.all() for subs in subscribers)))
+    #subscribers=Subscriber.objects.filter(name="Ford").all()
+    twitter_users=[u for subs in subscribers for u in subs.twitterusers.all()]
+    stopwordstextfile= open(os.path.join(settings.BASE_DIR,'socialapp/apis/files/stopwords.txt'), 'r')
+    stopwords = [w.replace('\n','') for w in stopwordstextfile.readlines()]
+    stopwordstextfile.close()
     for user in twitter_users:
         print user.userName,"!!!"
         user_data=None
         try:
+            sleep(20)
             user_data=twitter.show_user(screen_name=user.userName,include_entities=True)
             print user_data
-            user.userID = user_data['id_str']
-            user.userName = user_data["screen_name"]
+            user.userID = str(user_data['id_str'])
+            user.userName = str(user_data["screen_name"])
             user.followersCount = user_data["followers_count"]
             user.friendsCount = user_data["friends_count"]
             user.retweetCount = user_data["status"]["retweet_count"]
@@ -198,56 +214,69 @@ def exec_Subscriber_Timeline_API():
                 user_timeline=twitter.get_user_timeline(user_id=long(user.userID),count=200,exclude_replies=0,include_rts=1)
                 for tweet_data in user_timeline:
                     print  tweet_data
+                    qs=Tweet.objects.filter(pk=str(tweet_data["id_str"]))
+                    if len(qs[:])>0:
+                        print "Tweet available in the system"
+                        pass
                     u=createTweetUser(tweet_data)
                     print "done",u.userID
-                    t=createTweet(tweet_data)
-                    buildAssociation(tweet_data,t,u)
+                    t,p=createTweet(tweet_data,stopwords)
+                    buildAssociation(tweet_data,t,u,p)
             except TwythonError as e:
                 print e.message
         except TwythonError as e:
             print e.message
         #api_url = 'https://api.twitter.com/1.1/statuses/user_timeline.json'
         #constructed_url = twitter.construct_api_url(api_url, user_id=user.userName,count=200,exclude_replies=0,include_rts=1)
+@celery_app.task()
 def exec_Subscriber_Followers_API():
     subscribers=Subscriber.objects.all()
     twitter_users=list(itertools.chain(*(subs.twitterusers.all() for subs in subscribers)))
     for i,user in enumerate(twitter_users):
         print user.userName,"!!!"
-        if (i+1)%15==0:
+        user_data=twitter.show_user(screen_name=user.userName,include_entities=True)
+        print user_data
+        user.userID = str(user_data['id_str'])
+        user.userName = str(user_data["screen_name"])
+        user.followersCount = user_data["followers_count"]
+        user.friendsCount = user_data["friends_count"]
+        user.retweetCount = user_data["status"]["retweet_count"]
+        user.favouriteCount= user_data["status"]["favorite_count"]
+        user.isGeoEnabled = user_data['geo_enabled']
+        user.language = user_data['lang']
+        user.save()
+        """if (i+1)%10==0:
             print "Waiting 15 minutes for the next call"
-            sleep(910)
+            sleep(910)"""
         try:
             print "!!!TIME FOR FOLLOWERS!!!"
-            followers=twitter.get_followers_list(screen_name=user.userName,include_user_entities=True,count=200)
-            for f in followers:
-                print f
+            sleep(120)
+            followerIDs=twitter.get_followers_ids(screen_name = user)#.get_followers_list(screen_name=user.userName,include_user_entities=True,count=200)
+            for x in followerIDs["ids"]:
+                fdata = twitter.show_user(user_id=x)
+                print "follower",fdata
+                f=createFollowerUser(fdata)
+                user.followers.add(f)
+            user.save()
         except TwythonError as e:
             print e.message
-@celery_app.task()
-def exec_Places_API():
-    try:
-        print "!!!TIME FOR PLACES!!!"
-        """followers=twitter.get_followers_list(screen_name=user.userName,include_user_entities=True,count=200)
-        for f in followers:
-            print f"""
 
-    except TwythonError as e:
-        print e.message
 
 import HTMLParser
 html_parser=HTMLParser.HTMLParser()
 import re
-def cleanTweet(t):
+import os
+from django.conf import settings
+def cleanTweet(t,stopwords):
     text=html_parser.unescape(t.text)
     text=re.sub(r"http\S+", "", text)
     text=re.sub(r"ftp\S+", "", text)
     urls=[str(ur['url']) for ur in t.urls]
     text=text.encode('ascii','ignore')
     for word in text.split():
-        if word.startswith("@") or word in urls or word.startswith("#"):
+        if word.startswith("@") or word in urls or word.startswith("#") or word in stopwords:
             text=text.replace(word,"")
     print text
-    #text=text.lower()
     return text
 def createTweetUser(data):
     print data["user"]["id_str"]
@@ -257,7 +286,7 @@ def createTweetUser(data):
     if len(qs[:])>0:
         u=qs[0]
     u.userID = str(data["user"]['id_str'])
-    u.userName = data["user"]["name"]
+    u.userName = str(data["user"]["screen_name"])
     u.followersCount = data["user"]["followers_count"]
     u.friendsCount = data["user"]["friends_count"]
     u.retweetCount = data["retweet_count"]
@@ -265,7 +294,30 @@ def createTweetUser(data):
     u.language = data["user"]['lang']
     u.save()
     return u
-def createTweet(data):
+def createFollowerUser(data):
+    print data["id_str"]
+    qs=TwitterUser.objects.filter(userID=str(data["id_str"]))
+    #print qs[0]
+    u = TwitterUser()
+    if len(qs[:])>0:
+        u=qs[0]
+    u.userID = str(data['id_str'])
+    u.userName = str(data["screen_name"])
+    u.followersCount = data["followers_count"]
+    u.friendsCount = data["friends_count"]
+    u.retweetCount = data["retweet_count"] if "retweet_count" in data else 0
+    u.isGeoEnabled = data['geo_enabled']
+    u.language = data['lang']
+    if data['geo_enabled']==True:
+        print "Fiels available"
+        p=createPlace(data['status']['place'],data['status']['geo'],None,data['location'])
+        if p!=None:
+            pn=createPlaceNode(p)
+            u.locations.add(pn)
+    u.save()
+
+    return u
+def createTweet(data,stopwords):
     print "start"
     t=Tweet()
     t.tweetID=str(data["id_str"])
@@ -277,18 +329,23 @@ def createTweet(data):
     t.retweetCount = data["retweet_count"]
     t.symbols = data["entities"]["symbols"]
     t.urls = data["entities"]["urls"]
-    t.cleaned_text = cleanTweet(t)
+    t.cleaned_text = cleanTweet(t,stopwords)
     t.save()
-    p=createPlace(data["place"],data["geo"])
-    if p!=None:
+    p=None
+    if data["user"]['geo_enabled']==True:
+        p=createPlace(data["place"],data["geo"],t.tweetID,data['user']['location'])
+    """if p!=None:
         updated = Tweet.objects(pk=t.tweetID).update_one(set__location=p)
         if not updated:
-            print "location not updated"
-    return t
-def buildAssociation(data,t,u):
+            print "location not updated" """
+    return t,p
+def buildAssociation(data,t,u,pObj=None):
     createdAt=datetime.datetime.strptime(str(data["created_at"]).replace(str(data["created_at"])[data["created_at"].index("+"):len(data["created_at"])-4],''),'%a %b %d %H:%M:%S %Y').replace(tzinfo=timezone('UTC'))
     tn=TweetNode.objects.create(tweetID=str(data["id_str"]),in_reply_to_status_id=str(data["in_reply_to_status_id"]),createdAt=createdAt)
-
+    if pObj!=None:
+        pn=createPlaceNode(pObj)
+        tn.places.add(pn)
+        tn.save()
     extractHashtags(data,tn,u)
     if data["in_reply_to_status_id"]!=None and t.language=="en":
         t.calculate_Sentiment_Scores()
@@ -306,6 +363,7 @@ def extractHashtags(data,tn,u):
     try:
         if data["entities"]["hashtags"]!=None:
             for word in [x["text"] for x in data["entities"]["hashtags"]]:
+                word=word.encode('ascii','ignore')
                 qs=HashTag.objects.filter(tag=word)
                 hash_tag=None
                 if len(qs[:])>0:
@@ -313,22 +371,67 @@ def extractHashtags(data,tn,u):
                 else:
                     hash_tag=HashTag.objects.create(tag=word)
                 tn.hashtags.add(hash_tag)
-                tn.save()
+
                 previous_user_tags=[obj.tag for obj in list(u.hashtags.all())]
                 print "previous hashtags",previous_user_tags
                 if not word in previous_user_tags:
                     u.tweets.add(tn)
                     u.hashtags.add(hash_tag)
-                    u.save()
+            tn.save()
+            u.save()
+            print u.hashtags.all()
     except Exception as e:
         print e.message
 
-def createPlace(place,geo):
+def createPlaceNode(placeObj):
+    pn=None
+    if placeObj!=None:
+        try:
+            print "There is place"
+            qs=PlaceNode.objects.filter(placeId=placeObj.placeId)
+            pn=PlaceNode()
+            if len(qs[:])>0:
+                print "Place Node exists"
+                pn=qs[0]
+            else:
+                qs=PlaceNode.objects.filter(location=placeObj.location)
+                if len(qs[:])>0:
+                    print "Place Document with location info exists"
+                    pn=qs[0]
+            if placeObj.country!=None:
+                pn.placeId = placeObj.placeId
+                pn.placeFullName = placeObj.placeFullName
+                pn.placeName = placeObj.placeName
+                pn.country = placeObj.country
+                pn.countryCode = placeObj.countryCode
+                pn.placeType = placeObj.placeType
+                pn.save()
+                print "Place Node with ID",pn.placeId," and name ",pn.placeName
+            elif  placeObj.location!=None:
+                pn.location=placeObj.location
+                pn.save()
+                print "Place Node with Location ",pn.location
+
+        except Exception as e:
+            print e
+    return pn
+def createPlace(place,geo,tweetID=None,location=None):
     p=None
     if place!=None:
         try:
-            p=Place()
             print "There is place"
+            qs=Place.objects.filter(placeId=str(place["id"]))
+            p=Place()
+            if location!=None:
+                location=location.encode('ascii','ignore')
+            if len(qs[:])>0:
+                print "Place Document exists"
+                p=qs[0]
+            else:
+                qs=Place.objects.filter(location=str(location))
+                if len(qs[:])>0:
+                    print "Place Document with location info exists"
+                    p=qs[0]
             coord=place["bounding_box"]['coordinates'][0]
             if coord[0][0]==coord[1][0] and coord[0][1]==coord[1][1]:
                 p.geopoint = coord[0];print "geom trick"
@@ -336,15 +439,20 @@ def createPlace(place,geo):
                 p.geometry=[[coord[0],coord[1],coord[2],coord[3],coord[0]]]
             if geo!=None:
                 p.geopoint = geo["coordinates"]
-
-            p.placeId = place["id"]
-            p.placeFullName = place["full_name"]
-            p.placeName = place["name"]
-            p.countryCode = place["country_code"]
-            p.placeType = place["place_type"]
+            if place["country"]!=None:
+                p.placeId = str(place["id"])
+                p.placeFullName = str(place["full_name"].encode('ascii','ignore')) if place["full_name"]!=None else ""
+                p.placeName = str(place["name"].encode('ascii','ignore')) if place["name"]!=None else ""
+                p.country = str(place["country"].encode('ascii','ignore'))
+                p.countryCode = str(place["country_code"])
+                p.placeType = str(place["place_type"].encode('ascii','ignore'))
+            elif location!=None:
+                p.location = str(location)
+            if tweetID!=None:
+                p.tweetID=tweetID
             p.save()
         except Exception as e:
-            print e.message
+            print e
     return p
 """
 Rest API

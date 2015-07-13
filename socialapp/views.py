@@ -6,7 +6,7 @@ from socialapp.models import Subscriber
 
 from django.template import RequestContext
 from django.shortcuts import render_to_response
-from datetime import datetime
+
 from django.contrib.auth import authenticate
 from runipy.notebook_runner import NotebookRunner
 from IPython.nbformat.current import read
@@ -15,6 +15,7 @@ from pytz import timezone
 from analytics.kpi_calculations import *
 from analytics.charts import *
 from socialapp.forms import testFormBootstrap3
+from util import getTimelineMode
 def main_view(request):
     response_dict={"response_msg":""};target='index.html'
     #generating a dummy userID for session since each user will have to work concurrently their inputs should be independent from each other
@@ -31,16 +32,28 @@ def main_view(request):
                 form = testFormBootstrap3()
             response_dict['form']=form
             if request.method == 'GET' and request.session!=None:
-                today=datetime.today().replace(tzinfo=timezone('UTC'))
-                startDate=today.replace(year=today.year-1) if not 'start_date' in request.GET else datetime.strptime(request.GET['start_date'],"%Y-%m-%d").replace(tzinfo=timezone('UTC'))
-                endDate=today if not 'end_date' in request.GET else datetime.strptime(request.GET['end_date'],"%Y-%m-%d").replace(tzinfo=timezone('UTC'))
+                today=datetime.datetime.today().replace(tzinfo=timezone('UTC'))
+                startDate=today.replace(year=today.year-1) if not 'start_date' in request.GET else datetime.datetime.strptime(request.GET['start_date'],"%Y-%m-%d").replace(tzinfo=timezone('UTC'))
+                endDate=today if not 'end_date' in request.GET else datetime.datetime.strptime(request.GET['end_date'],"%Y-%m-%d").replace(tzinfo=timezone('UTC'))
                 print startDate
                 print endDate
-                """notebook = read(open("analytics/twitter_sna.ipynb"), 'json')
-                r = NotebookRunner(notebook, pylab=True)
-                r.run_notebook()"""
-                calculateKPIs(request,startDate,endDate)
-                response_dict["top_hashtags_chart"]=getTopHashtagChart(request.session["username"])
+                print "user",request.session["username"]
+                tMode=getTimelineMode(startDate,endDate)
+                #calculateKPIs(request,tMode,startDate,endDate)
+                response_dict["startDate"]=startDate.strftime("%d-%m-%Y")
+                response_dict["endDate"]=endDate.strftime("%d-%m-%Y")
+                response_dict["subscriber"]=request.session["username"]
+                response_dict["charts"]=[]
+                response_dict["charts"].append(getTopHashtagChart(request.session["username"]))
+                response_dict["charts"].append(getHashTagTimeline(request.session["username"],tMode))
+                response_dict["charts"].append(getSentimentTimeline(request.session["username"],tMode))
+                response_dict["charts"].append(getTweetCompetitionTimeline(request.session["username"],tMode))
+                response_dict["charts"].append(getCountryFollowerPieChart(request.session["username"]))
+                qs=CompetitorBenchmark.objects.filter(subscriber=request.session["username"])
+                benchmarkObj=qs.filter(creationdate=qs.latest('creationdate').creationdate).all()
+                table = CompetitorBenchmarkingResultsTable(benchmarkObj)
+                RequestConfig(request).configure(table)
+                response_dict["table"]=table
                 response_dict["response_msg"]+="Welcome to Mediapower Social Scoring Application!"
                 return render_to_response(target,response_dict,context_instance=RequestContext(request))
             else:
@@ -50,62 +63,39 @@ def main_view(request):
         response_dict["response_msg"]+="Welcome to Mediapower Social Scoring Application!"
         return render_to_response(target,response_dict,context_instance=RequestContext(request))
 
-"""def main_view(request):
-    response_dict={"response_msg":""};target='index.html'
-    #generating a dummy userID for session since each user will have to work concurrently their inputs should be independent from each other
-    if request.user.is_authenticated():
-        s=Subscriber.objects(name="Ford").get()
-        if len(s[:])==0:
-            s=Subscriber.objects.create(name="Ford")
-            s.save()
-        authenticate(username='204269',password='johnpassword')
-        request.session["userID"]=int(request.user.username)
-    form = None
-    response_dict['form']=form
-    if request.session["userID"]!=None:
-        me=MacroEcon.objects.filter(userID=request.session["userID"],isForecast=True).all()
-        if me!=None:
-            me=me.extra(order_by = ['-id'])
-            table = HashTagResultsTable(me)
-            response_dict["table"]=table
-            RequestConfig(request).configure(table)
-            if request.method == 'POST':
-                form = UploadFileForm(request.POST, request.FILES)
-                if form.is_valid():
-                    result=storeUploadedFile(request.FILES['file'],request.session["userID"],datetime.strptime(request.POST["startdate"],"%m/%d/%Y"))
-                    if result:
-                        me=MacroEcon.objects.filter(userID=request.session["userID"],isForecast=True).all().extra(order_by = ['-id'])
-                        table = HashTagResultsTable(me)
-                        RequestConfig(request).configure(table)
-                        response_dict["table"]=table
-                        response_dict["response_msg"]+="All macro economical inputs are added to DB. You can now Forecast or Simulate the balance estimations."
-                    else:
-                        response_dict["response_msg"]+="Macro economical inputs cannot be added to DB."
-                    return render_to_response(target,response_dict,context_instance=RequestContext(request))
-                else:
-                    response_dict["response_msg"]+="Please provide a date and a .tsv file and press 'Add' button to give new macro economical input.Then press 'Forecast' button to forecast the portfolio balance. "
-                    return render_to_response(target,response_dict,context_instance=RequestContext(request))
-            if request.method == 'GET' and len(request.GET)>0:
-                if "Forecast" in request.GET or "Simulate" in request.GET:
-                    me=MacroEcon.objects.filter(userID=request.session["userID"]).all()
-                    if len(me[:])>0:
-                        f=Forecast(me,request,"Forecast") if "Forecast" in request.GET else Forecast(me,request,"Simulate") if "Simulate" in request.GET else None
-                        if f.status:
-                            me=MacroEcon.objects.filter(userID=request.session["userID"],isForecast=True).all().extra(order_by = ['-id'])
-                            table = HashTagResultsTable(me)
-                            RequestConfig(request).configure(table)
-                            response_dict["table"]=table
-                            response_dict["response_msg"]+="Forecast Completed." if "Forecast" in request.GET else "Simulation Completed."
-                        else:
-                            response_dict["response_msg"]+="Please provide a date and a .tsv file and press 'Add' button to give new macro economical input.Then press 'Forecast' button to forecast the portfolio balance. "
-                        return render_to_response(target,response_dict,context_instance=RequestContext(request))
-                    else:
-                        response_dict["response_msg"]+="Please provide a date and a .tsv file and press 'Add' button to give new macro economical input.Then press 'Forecast' button to forecast the portfolio balance. "
-                        return render_to_response(target,response_dict,context_instance=RequestContext(request))
-                else:
-                    response_dict["response_msg"]+="Please provide a date and a .tsv file and press 'Add' button to give new macro economical input.Then press 'Forecast' button to forecast the portfolio balance. "
-                    return render_to_response(target,response_dict,context_instance=RequestContext(request))
-            else:
-                response_dict["response_msg"]+="Please provide a date and a .tsv file and press 'Add' button to give new macro economical input.Then press 'Forecast' button to forecast the portfolio balance. "
-                return render_to_response(target,response_dict,context_instance=RequestContext(request))
-"""
+def map(request):
+    target='map.html'
+    return render_to_response(target,{},context_instance=RequestContext(request))
+
+from django.http import HttpResponse
+import json
+def getFollowers(request):
+    qs=GeoFollower.objects.filter(subscriber="Ford")
+
+
+
+    features=[]
+    for record in qs.filter(creationdate=qs.latest('creationdate').creationdate).all():
+        feature={"type":"Feature","geometry":{"type":"Point","coordinates":[record.geopointX,record.geopointY]},"properties":{"followerCount":record.count,"placeName":record.placeName}}
+        features.append(feature)
+
+    my_layer = {
+    "type": "FeatureCollection",
+    "features": features,
+    "crs": {
+        "type": "link",
+        "properties": {"href": "http://spatialreference.org/ref/epsg/4326", "type": "proj4"}}}
+    followerjson=json.dumps(my_layer, ensure_ascii=False)
+    print followerjson
+    return HttpResponse(followerjson, content_type="application/json")
+
+def getGraphEdges(request):
+    features=[]
+    for s in Subscriber.objects.all():
+        print "Graph Subscriber",s.name
+        for user in s.twitterusers.all():
+            features.append({"subscriber":s.name,"user":user.userName,"followerCount":user.followersCount})
+
+    graphjson=json.dumps(features, ensure_ascii=False)
+    print graphjson
+    return HttpResponse(graphjson, content_type="application/json")

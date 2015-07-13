@@ -6,7 +6,7 @@ TEMPLATE_DIRS = (
 )
 STATIC_URL =os.path.join(BASE_DIR, "static/")
 STATICFILES_DIRS =('static-assets',)
-DEBUG = False #Set to True when only developing the system, not good for celery
+DEBUG = True #Set to True when only developing the system, not good for celery
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
@@ -28,7 +28,7 @@ MANAGERS = ADMINS
 
 # Hosts/domain names that are valid for this site; required if DEBUG is False
 # See https://docs.djangoproject.com/en/1.4/ref/settings/#allowed-hosts
-ALLOWED_HOSTS = ["localhost"]
+ALLOWED_HOSTS = []
 
 
 
@@ -129,12 +129,13 @@ INSTALLED_APPS = (
     'rest_framework',
     'django_tables2',
     'emoticons',
-    'debug_toolbar',
+
     "djcelery",
     'tastypie',
     'chartit',
     'splearn',
-    'socialapp.apis'
+    'socialapp.apis',
+
 )
 #import mongoengine.django.mongo_auth.models
 #App to add django-fbauth-templatetag,twitter-text-py,
@@ -202,6 +203,21 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_ENABLE_UTC = True
 
+STATICFILES_FINDERS = (
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+)
+TEMPLATE_CONTEXT_PROCESSORS = (
+    "django.contrib.auth.context_processors.auth",
+    "django.core.context_processors.debug",
+    "django.core.context_processors.i18n",
+    "django.core.context_processors.media",
+    "django.core.context_processors.static",
+    "django.contrib.messages.context_processors.messages",
+    'django.core.context_processors.request',
+)
+
+
 import sys
 # Path for spark source folder
 os.environ['SPARK_HOME']="/opt/cloudera/parcels/CDH-5.3.0-1.cdh5.3.0.p0.30/lib/spark"
@@ -212,14 +228,16 @@ os.environ['JAVA_HOME']="/usr/jdk64/jdk1.7.0_67/jre/"
 # Append pyspark  to Python Path
 sys.path.append("/opt/cloudera/parcels/CDH-5.3.0-1.cdh5.3.0.p0.30/lib/spark/python")
 
-try:
+"""try:
     from pyspark import SparkContext
     from pyspark import SparkConf
     print ("Successfully imported Spark Modules")
 
 except ImportError as e:
     print ("Can not import Spark Modules", e)
-    sys.exit(1)
+    sys.exit(1)"""
+
+
 
 
 ######

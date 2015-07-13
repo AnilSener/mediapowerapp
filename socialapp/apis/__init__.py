@@ -1,7 +1,7 @@
 __author__ = 'anil'
 from socialapp.apis import twitter
 
-twitter.exec_Subscriber_Timeline_API()
+#twitter.exec_Subscriber_Timeline_API()
 #twitter.exec_Subscriber_Followers_API()
 #twitter.exec_Twitter_Streamer()
 #twitter.exec_Twitter_HashTag_Streamer()

@@ -22,4 +22,7 @@ urlpatterns = patterns('',
     url(r'^admin/', include(admin.site.urls)),
     url(r'^socialapp/$',views.main_view,name='main_view'),
     url(r'^api/', include(v1_api.urls)),
+    url(r'^socialapp/get-followers/$', views.getFollowers, name='get_followers'),
+    url(r'^socialapp/map/$',views.map,name='map'),
+    url(r'^socialapp/get-graphedges/$',views.getGraphEdges, name='get_graphedges'),
 )

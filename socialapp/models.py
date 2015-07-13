@@ -11,18 +11,31 @@ wnl = nltk.WordNetLemmatizer()
 import numpy as np
 import math
 
-class Place(EmbeddedDocument):
+class Place(Document):
     geometry = PolygonField()
     geopoint = GeoPointField()
     placeId = StringField()
     placeFullName = StringField()
     placeName = StringField()
+    country = StringField()
     countryCode = StringField()
     placeType = StringField()
+    tweetID = StringField()
+    location = StringField()
 
+class PlaceNode(models.NodeModel):
+    placeId = models.StringProperty(primary_key=True)
+    placeFullName = models.StringProperty()
+    placeName = models.StringProperty()
+    country = models.StringProperty()
+    countryCode = models.StringProperty()
+    placeType = models.StringProperty()
+    resident = models.Relationship('TwitterUser',rel_type='resides_in',related_name="locations")
+    tweetLocation = models.Relationship('TweetNode',rel_type='tweeted_in',related_name="places")
+    location= models.StringProperty()
 class Tweet(Document):
     tweetID= StringField(primary_key=True)
-    location= EmbeddedDocumentField('Place')
+    #location= EmbeddedDocumentField('Place')
     language = StringField()
     text = StringField()
     cleaned_text = StringField()
@@ -36,9 +49,9 @@ class Tweet(Document):
     symbols = ListField()
     urls = ListField()
     twitteruser = ReferenceField("TwitterUser")
-    pos_Score= LongField()
-    obj_Score= LongField()
-    neg_Score= LongField()
+    pos_Score= FloatField()
+    obj_Score= FloatField()
+    neg_Score= FloatField()
     def calculate_Sentiment_Scores(self):
         sentences = nltk.sent_tokenize(self.cleaned_text)
         stokens = [nltk.word_tokenize(sent) for sent in sentences]
@@ -90,8 +103,8 @@ class TweetNode(models.NodeModel):
     in_reply_to_status_id=models.StringProperty()
     owner = models.Relationship('TwitterUser',rel_type='tweeted_by',related_name="tweets")
     createdAt = models.DateTimeProperty()
-    replies = models.Relationship('self',rel_type='replied_as')
-    retweets = models.Relationship('self',rel_type='retweeted_as')
+    repliedto = models.Relationship('self',rel_type='replied_as',related_name="replies")
+    retweeted = models.Relationship('self',rel_type='retweeted_as',related_name="retweets")
 
 
 class HashTag(models.NodeModel):
@@ -112,28 +125,80 @@ class TwitterRegistry(dbmodels.Model):
 #Chart Models
 class HashtagBenchmark(dbmodels.Model):
     id=dbmodels.AutoField(primary_key=True)
-    creationdate=dbmodels.DateTimeField(auto_now=True,auto_now_add=True)
+    creationdate=dbmodels.DateTimeField()
     subscriber=dbmodels.TextField()
     hashtag = dbmodels.TextField()
     count = dbmodels.IntegerField()
     class Meta:
+        ordering=('subscriber','-creationdate','-count')
+
+class CountryFollower(dbmodels.Model):
+    id=dbmodels.AutoField(primary_key=True)
+    creationdate=dbmodels.DateTimeField()
+    subscriber=dbmodels.TextField()
+    code = dbmodels.TextField()
+    count = dbmodels.IntegerField()
+    class Meta:
         ordering=('subscriber','-creationdate')
-    """def __unicode__(self):
-        return '%s %s %s %s' %(self.hashtag, self.count,self.subscriber,self.creationdate)"""
 
-"""class TwitterUser(Document):
-    userID = StringField()
-    userName = StringField()
-    retweetCount = LongField()
-    friendsCount = LongField()
-    followersCount = LongField()
-    isGeoEnabled = BooleanField
-    language = StringField()
-    def gettweetObjIDs(self):
-        return self.tweetObjIDs"""
+class GeoFollower(dbmodels.Model):
+    id=dbmodels.AutoField(primary_key=True)
+    creationdate=dbmodels.DateTimeField()
+    placeName=dbmodels.TextField()
+    subscriber=dbmodels.TextField()
+    geopointX = dbmodels.DecimalField(decimal_places=8,max_digits=30)
+    geopointY = dbmodels.DecimalField(decimal_places=8,max_digits=30)
+    count = dbmodels.IntegerField()
+    class Meta:
+        ordering=('subscriber','-creationdate')
+
+#Chart Models
+class HashtagTimeline(dbmodels.Model):
+    id=dbmodels.AutoField(primary_key=True)
+    creationdate=dbmodels.DateTimeField()
+    subscriber=dbmodels.TextField()
+    hashtag = dbmodels.TextField()
+    year = dbmodels.IntegerField()
+    month = dbmodels.IntegerField()
+    week = dbmodels.IntegerField()
+    day = dbmodels.IntegerField()
+    count = dbmodels.IntegerField()
+    class Meta:
+        ordering=('subscriber','-creationdate','year','month','week','day')
+
+class SentimentTimeline(dbmodels.Model):
+    id=dbmodels.AutoField(primary_key=True)
+    creationdate=dbmodels.DateTimeField()
+    subscriber=dbmodels.TextField()
+    year = dbmodels.IntegerField()
+    month = dbmodels.IntegerField()
+    week = dbmodels.IntegerField()
+    day = dbmodels.IntegerField()
+    obj_score = dbmodels.FloatField()
+    neg_score = dbmodels.FloatField()
+    pos_score = dbmodels.FloatField()
+    class Meta:
+        ordering=('subscriber','-creationdate','year','month','week','day')
+
+class TweetCompetitionTimeline(dbmodels.Model):
+    id=dbmodels.AutoField(primary_key=True)
+    creationdate=dbmodels.DateTimeField()
+    subscriber=dbmodels.TextField()
+    year = dbmodels.IntegerField()
+    month = dbmodels.IntegerField()
+    week = dbmodels.IntegerField()
+    day = dbmodels.IntegerField()
+    tweetcount = dbmodels.IntegerField()
+    retweetcount = dbmodels.IntegerField()
+    class Meta:
+        ordering=('-creationdate','year','month','week','day')
+
+class Country(dbmodels.Model):
+    code=dbmodels.TextField(primary_key=True)
+    name=dbmodels.TextField()
+
 class Subscriber(models.NodeModel):
-    name=models.StringProperty()
-
+    name=models.StringProperty()#indexed=True, unique=True should be added
 
 
 class TwitterUser(models.NodeModel):
@@ -146,7 +211,7 @@ class TwitterUser(models.NodeModel):
     isGeoEnabled = models.BooleanProperty()
     language = models.StringProperty()
     account = models.Relationship('Subscriber',rel_type='owns',related_name="twitterusers")
-    follower = models.Relationship('self', rel_type='follows',related_name='followed_by')
+    follower = models.Relationship('self', rel_type='follows',related_name='followers')
 
     #tweets = models.Relationship('TweetNode',rel_type='tweets')
 s=Subscriber.objects.all()
@@ -173,12 +238,27 @@ if len(qs[:])==0:
     objects = UserManager()
     follows = models.Relationship('self', rel_type='follows',related_name='followed_by')"""
 
-"""import django_tables2 as tables
-class HashTagResultsTable(tables.Table):
+class CompetitorBenchmark(dbmodels.Model):
+    id=dbmodels.AutoField(primary_key=True)
+    KPI = dbmodels.TextField()
+    subscriber=dbmodels.TextField()
+    subscribervalue = dbmodels.DecimalField(decimal_places=4,max_digits=30,verbose_name="Subscriber's Value")
+    average = dbmodels.DecimalField(decimal_places=4,max_digits=30,verbose_name='Industrial Average')
+    ranking = dbmodels.IntegerField(verbose_name='Ranking')
+    creationdate=dbmodels.DateTimeField()
     class Meta:
-        model = HashTag
+        ordering=('subscriber','-creationdate')
+
+import django_tables2 as tables
+class CompetitorBenchmarkingResultsTable(tables.Table):
+
+    class Meta:
+        model = CompetitorBenchmark
         # add class="paleblue" to <table> tag
-        attrs = {"class": "paleblue"}"""
+        attrs = {"class": "paleblue","height":'70%'}
+        exclude= ("id","subscriber","creationdate")
+
+
 
 class BoundingBox(object):
     def __init__(self, *args, **kwargs):

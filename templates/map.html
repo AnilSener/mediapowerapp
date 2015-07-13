@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+{% load geojson_tags %}
+{% load staticfiles %}
+<html>
+
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+    <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
+    <script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+    <script src="//code.jquery.com/jquery-1.10.2.js"></script>
+    <script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+    <script src="{{ STATIC_URL }}js/jsnetworkx.js"></script>
+    <script src="{{ STATIC_URL }}js/jquery.form.js"></script>
+    <script src="http://code.highcharts.com/highcharts.js"></script>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="{{ STATIC_URL }}js/spin.min.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}js/moment.js"></script>
+<script src="{{ STATIC_URL }}js/bootstrap-datetimepicker.min.js"></script>
+    <link rel="stylesheet" src="{{ STATIC_URL }}css/jquery.datetimepicker.css"/>
+  <script type="text/javascript" src="{{ STATIC_URL }}js/jquery.datetimepicker.js"></script>
+
+    <link rel="stylesheet" href="{{ STATIC_URL }}css/bootstrap.min.css">
+
+<!-- Optional theme -->
+<link rel="stylesheet" href="{{ STATIC_URL }}css/bootstrap-theme.min.css">
+
+<!-- Latest compiled and minified JavaScript -->
+<script src="{{ STATIC_URL }}js/bootstrap.min.js"></script>
+
+</head>
+<style>
+    .leaflet-container {  /* all maps */
+
+    }
+
+
+</style>
+<body>
+<div id="spinner" style="width:100px; height:100px; position:absolute; top: 50%; left: 50%; z-index:10000;"></div>
+<div id="map" style="width:100%; height:100%;">
+
+   <br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
+    <br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
+    <br/><br/><br/><br/><br/><br/><br/><br/>
+</div>
+
+
+<script>
+
+
+var map;
+var ajaxRequest;
+var plotlist;
+var plotlayers=[];
+
+
+//var source = new Proj4js.Proj('EPSG:4326');    //source coordinates will be in Longitude/Latitude, WGS84
+//var dest = new Proj4js.Proj('EPSG:3785');
+
+
+
+map = new L.Map('map');
+map.setView([0, 0], 2);
+//map.setView([usergeom[1], usergeom[0]], 17);
+//map.setMaxBounds([[43.4568551, -3.4492757], [42.9818774, -2.4128145]]);
+//map.setMaxBounds([[43.4568551, -3.4492757], [42.9818774, -2.4128145]]);
+///map.setView([usergeom[1], usergeom[0]], 17);
+//map.setMaxBounds([[43.4568551, -3.4492757], [42.9818774, -2.4128145]]);
+
+
+	// set up the map
+	// create the tile layer with correct attribution
+	var osmUrl='http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+	var osmAttrib='Map data © <a href="http://openstreetmap.org">OpenStreetMap</a> contributors';
+	var osm = new L.TileLayer(osmUrl,{minZoom: 2, maxZoom: 24, attribution: osmAttrib,noWrap: true});
+//osm.addTo(map);
+map.addLayer(osm)
+
+/* create new layer group */
+var layer_followers = new L.LayerGroup();
+
+var MARKER = {
+    icon:  L.icon({
+        iconUrl: '{{ STATIC_URL }}images/tweet.png',
+        iconSize: [40, 40]
+    })
+};
+
+
+var req = $.ajax({
+url: "/socialapp/get-followers/",
+dataType: 'json',
+    data : "followerjson",
+    success: function(data) {
+                    console.log(data)
+                   L.geoJson(data, {onEachFeature: onEachFeature})
+                    //map.addLayer(hotels)
+                    map.addLayer(layer_followers)
+                    }
+
+});
+
+function onEachFeature(feature, layer) {
+
+    var geom;
+    console.log(feature)
+    geom = feature.geometry.coordinates;
+
+     var content =
+        '<b><p>' + feature.properties.placeName + '<\/b><br \/>' +
+        'Follower Count: ' + feature.properties.followerCount+ '<br \/>' ;
+    var mark=L.marker([geom[1],geom[0]],MARKER).bindPopup(content);
+    mark.addTo(layer_followers);
+}
+      //L.geoJson(collection, {onEachFeature: onEachFeature}).addTo(map);
+// *** create overlay layers list ... ***
+var baseLayers = {
+   "OpenStreetMap": osm
+};
+var overlays = {
+    "Follower Counts": layer_followers
+
+};
+L.control.layers(baseLayers,overlays).addTo(map);
+</script>
+</body>
+
+
+</html>
